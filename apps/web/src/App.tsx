@@ -31,6 +31,7 @@ const COMMANDS = [
   "build-warehouse",
   "build-features",
   "make-reports",
+  "full-pipeline",
 ];
 
 type Tab = "health" | "tables" | "commands";

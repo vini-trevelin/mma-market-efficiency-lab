@@ -23,6 +23,7 @@ def main() -> None:
     subparsers.add_parser("build-warehouse")
     subparsers.add_parser("build-features")
     subparsers.add_parser("make-reports")
+    subparsers.add_parser("full-pipeline")
 
     args = parser.parse_args()
     if args.command == "download-ufcstats":
@@ -40,6 +41,14 @@ def main() -> None:
         result = build_pit_features()
     elif args.command == "make-reports":
         result = make_reports()
+    elif args.command == "full-pipeline":
+        result = {
+            "download": download_ufcstats(),
+            "parse": parse_cached_ufcstats(),
+            "warehouse": build_warehouse(),
+            "features": build_pit_features(),
+            "reports": make_reports(),
+        }
     else:
         raise SystemExit(f"Unknown command: {args.command}")
     print(json.dumps(result, indent=2, default=str))

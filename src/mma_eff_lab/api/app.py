@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import threading
@@ -43,6 +44,7 @@ ALLOWED_COMMANDS = {
     "build-warehouse": ["build-warehouse"],
     "build-features": ["build-features"],
     "make-reports": ["make-reports"],
+    "full-pipeline": ["full-pipeline"],
 }
 _lock = threading.Lock()
 _runs: dict[str, dict[str, Any]] = {}
@@ -114,6 +116,7 @@ def _run_command(run_id: str, name: str, log_path: Path) -> None:
             process = subprocess.run(
                 command,
                 cwd=settings.repo_root,
+                env={**os.environ, "PYTHONUNBUFFERED": "1"},
                 stdout=handle,
                 stderr=subprocess.STDOUT,
                 text=True,
