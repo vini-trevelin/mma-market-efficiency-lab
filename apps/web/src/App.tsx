@@ -1,5 +1,5 @@
 import { Database, Play, RefreshCw, Table2, Terminal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   getCommand,
@@ -35,6 +35,7 @@ const COMMANDS = [
 ];
 
 type Tab = "health" | "tables" | "commands";
+const RUN_IDS_KEY = "mma_eff_lab_command_run_ids";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("health");
@@ -205,9 +206,21 @@ function CommandsPanel({ onChange }: { onChange: () => void }) {
   const [runs, setRuns] = useState<CommandStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const runId = new URLSearchParams(window.location.search).get("run");
+    if (runId) {
+      void poll(runId);
+    }
+    for (const runId of getStoredRunIds()) {
+      void poll(runId);
+    }
+  }, []);
+
   async function runCommand(name: string) {
     try {
       const started = await startCommand(name);
+      storeRunId(started.run_id);
+      window.history.replaceState(null, "", `?run=${started.run_id}`);
       setError(null);
       poll(started.run_id);
     } catch (error) {
@@ -237,15 +250,33 @@ function CommandsPanel({ onChange }: { onChange: () => void }) {
       </div>
       {error && <div className="error">{error}</div>}
       {runs.map((run) => (
-        <article className="log" key={run.run_id}>
-          <header>
-            <strong>{run.name}</strong>
-            <span>{run.status}</span>
-          </header>
-          <pre>{run.log || "No log output yet."}</pre>
-        </article>
+        <CommandLog run={run} key={run.run_id} />
       ))}
     </section>
+  );
+}
+
+function CommandLog({ run }: { run: CommandStatus }) {
+  const preRef = useRef<HTMLPreElement | null>(null);
+  const progress = summarizeProgress(run);
+
+  useEffect(() => {
+    if (preRef.current) {
+      preRef.current.scrollTop = preRef.current.scrollHeight;
+    }
+  }, [run.log]);
+
+  return (
+    <article className="log">
+      <header>
+        <div>
+          <strong>{run.name}</strong>
+          {progress && <span className="progress">{progress}</span>}
+        </div>
+        <span>{run.status}</span>
+      </header>
+      <pre ref={preRef}>{run.log || "No log output yet."}</pre>
+    </article>
   );
 }
 
@@ -253,4 +284,42 @@ function formatValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+function summarizeProgress(run: CommandStatus): string | null {
+  const matches = [...run.log.matchAll(/\[event (\d+)\/(\d+)(?: done)?\]/g)];
+  const latest = matches.at(-1);
+  if (!latest) return null;
+  const current = Number(latest[1]);
+  const total = Number(latest[2]);
+  if (!current || !total) return null;
+  const started = Date.parse(run.started_at_utc);
+  if (!Number.isFinite(started)) return `event ${current}/${total}`;
+  const elapsedMs = Date.now() - started;
+  const eventRate = current / Math.max(elapsedMs / 1000, 1);
+  const remainingSeconds = Math.max((total - current) / Math.max(eventRate, 0.0001), 0);
+  const percent = ((current / total) * 100).toFixed(1);
+  return `event ${current}/${total} (${percent}%) - ETA ${formatDuration(remainingSeconds)}`;
+}
+
+function formatDuration(seconds: number): string {
+  const rounded = Math.round(seconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function getStoredRunIds(): string[] {
+  try {
+    const value = window.localStorage.getItem(RUN_IDS_KEY);
+    return value ? (JSON.parse(value) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeRunId(runId: string): void {
+  const runIds = [runId, ...getStoredRunIds().filter((existing) => existing !== runId)].slice(0, 5);
+  window.localStorage.setItem(RUN_IDS_KEY, JSON.stringify(runIds));
 }
