@@ -326,12 +326,22 @@ def _parse_event_fight_row(
     names = [link[1] for link in fighter_links[:2]]
     cells = [clean_text(cell) for cell in row.select("td")]
     row_text = clean_text(row)
-    statuses = re.findall(r"\b(W|L|D|NC)\b", row_text)
-    method = _extract_after_label(row_text, "METHOD") or _cell_after(cells, names[-1])
-    round_value = _extract_after_label(row_text, "ROUND") or _first_regex(row_text, r"\b([1-5])\b")
+    statuses = _parse_outcomes(cells[0] if cells else row_text)
+    method = (
+        clean_text(cells[7])
+        if len(cells) > 9 and clean_text(cells[7]) not in {"", "--"}
+        else _extract_after_label(row_text, "METHOD") or _cell_after(cells, names[-1])
+    )
+    round_value = (
+        clean_text(cells[8])
+        if len(cells) > 9 and clean_text(cells[8])
+        else _extract_after_label(row_text, "ROUND") or _first_regex(row_text, r"\b([1-5])\b")
+    )
     time_value = _extract_after_label(row_text, "TIME") or _first_regex(
         row_text, r"\b\d{1,2}:\d{2}\b"
     )
+    if len(cells) > 9 and clean_text(cells[9]):
+        time_value = clean_text(cells[9])
     if not method or not round_value or not time_value:
         method, round_value, time_value = _fallback_method_round_time(cells)
     if not method or not round_value or not time_value:
@@ -509,6 +519,14 @@ def _fallback_method_round_time(cells: list[str]) -> tuple[str | None, str | Non
         if time_value is None and re.fullmatch(r"\d{1,2}:\d{2}", cell):
             time_value = cell
     return method, round_value, time_value
+
+
+def _parse_outcomes(value: str) -> list[str]:
+    normalized = clean_text(value).lower()
+    if not normalized:
+        return []
+    token_map = {"win": "W", "loss": "L", "draw": "D", "nc": "NC", "w": "W", "l": "L"}
+    return [token_map[token] for token in normalized.split() if token in token_map]
 
 
 def parse_all_cached(raw_dir: Path) -> dict[str, list[dict[str, object]]]:
