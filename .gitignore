@@ -1,0 +1,17 @@
+.DS_Store
+.ruff_cache/
+.pytest_cache/
+.venv/
+__pycache__/
+*.py[cod]
+
+node_modules/
+apps/web/node_modules/
+dist/
+apps/web/dist/
+apps/web/tsconfig.tsbuildinfo
+
+data/raw/
+data/warehouse/
+data/reports/
+data/logs/
