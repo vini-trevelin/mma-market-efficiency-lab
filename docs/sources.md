@@ -5,7 +5,11 @@
 UFCStats is the canonical v0 source. The downloader starts from completed events and
 caches raw HTML before any parsing.
 
-Source: https://www.ufcstats.com/statistics/events/completed?page=all
+Source: http://ufcstats.com/statistics/events/completed?page=all
+
+Note: local requests to UFCStats HTTPS currently refuse connections in this environment,
+while HTTP returns `200 OK`. The downloader therefore uses HTTP and normalizes UFCStats
+links to that host.
 
 ## Deferred Sources
 

@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 
-BASE_URL = "https://www.ufcstats.com"
+BASE_URL = "http://ufcstats.com"
 EVENTS_INDEX_URL = f"{BASE_URL}/statistics/events/completed?page=all"
 
 
@@ -117,7 +117,9 @@ def extract_id(url: str, entity: str) -> str:
 
 
 def absolute_url(url: str) -> str:
-    return urljoin(BASE_URL, url)
+    return urljoin(BASE_URL, url).replace("https://www.ufcstats.com", BASE_URL).replace(
+        "https://ufcstats.com", BASE_URL
+    )
 
 
 def parse_ufcstats_date(value: str) -> date:
@@ -241,7 +243,7 @@ def parse_fighter_detail(html: str, url: str) -> Fighter:
         full_name = f"{first} {last}"
     if not full_name:
         raise ParseError(f"Missing fighter name for {fighter_id}")
-    fields = _parse_label_values(clean_text(soup))
+    fields = _parse_label_values(soup)
     return Fighter(
         fighter_id=fighter_id,
         full_name=full_name,
@@ -333,6 +335,8 @@ def _parse_event_fight_row(
     if not method or not round_value or not time_value:
         method, round_value, time_value = _fallback_method_round_time(cells)
     if not method or not round_value or not time_value:
+        if not statuses:
+            return None
         raise ParseError(f"Missing required fight fields for {fight_id}")
     winner_id = None
     if statuses[:2] == ["W", "L"]:
@@ -443,13 +447,24 @@ def _unique_links(soup: Tag | BeautifulSoup, entity: str) -> list[tuple[str, str
     return links
 
 
-def _parse_label_values(text: str) -> dict[str, str]:
-    labels = ["Height", "Weight", "Reach", "STANCE", "DOB"]
-    pattern = "|".join(labels)
+def _parse_label_values(soup: BeautifulSoup) -> dict[str, str]:
     fields: dict[str, str] = {}
-    for match in re.finditer(rf"({pattern}):\s*(.*?)(?=(?:{pattern}):|$)", text, re.I):
-        key = match.group(1).lower()
-        fields[key] = clean_text(match.group(2))
+    for item in soup.select("li"):
+        title = item.select_one(".b-list__box-item-title")
+        if title is None:
+            item_text = clean_text(item)
+            if ":" not in item_text:
+                continue
+            raw_key, value = item_text.split(":", 1)
+            key = raw_key.strip().lower()
+            if key in {"height", "weight", "reach", "stance", "dob"}:
+                fields[key] = clean_text(value)
+            continue
+        key = clean_text(title).rstrip(":").lower()
+        if key not in {"height", "weight", "reach", "stance", "dob"}:
+            continue
+        title.extract()
+        fields[key] = clean_text(item)
     return fields
 
 
@@ -505,6 +520,8 @@ def parse_all_cached(raw_dir: Path) -> dict[str, list[dict[str, object]]]:
     stats: list[FighterFightStats] = []
     for path in sorted((ufc_dir / "events").glob("*.html")):
         result = parse_event_detail(path.read_text(encoding="utf-8"), event_id=path.stem)
+        if result.event.event_date > date.today():
+            continue
         events.append(result.event)
         fights.extend(result.fights)
         participants.extend(result.participants)

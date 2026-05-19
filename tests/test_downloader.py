@@ -40,11 +40,11 @@ class FakeSession:
 def test_downloader_caches_and_skips_existing_files(tmp_path: Path) -> None:
     settings = replace(get_settings(tmp_path), repo_root=tmp_path)
     responses = {
-        "https://www.ufcstats.com/statistics/events/completed?page=all": event_index_html(),
+        "http://ufcstats.com/statistics/events/completed?page=all": event_index_html(),
         f"http://ufcstats.com/event-details/{EVENT_ID_1}": event_detail_html(),
         f"http://ufcstats.com/fight-details/{FIGHT_ID_1}": fight_detail_html(),
-        f"https://www.ufcstats.com/fighter-details/{RED_ID}": fighter_html("Red Fighter"),
-        f"https://www.ufcstats.com/fighter-details/{BLUE_ID}": fighter_html("Blue Fighter"),
+        f"http://ufcstats.com/fighter-details/{RED_ID}": fighter_html("Red Fighter"),
+        f"http://ufcstats.com/fighter-details/{BLUE_ID}": fighter_html("Blue Fighter"),
     }
     session = FakeSession(responses)
     downloader = UFCStatsDownloader(settings=settings, session=session, sleep_seconds=0)

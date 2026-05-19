@@ -4,7 +4,7 @@ import hashlib
 import json
 import time
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import requests
@@ -49,10 +49,18 @@ class UFCStatsDownloader:
         self.root = self.settings.raw_dir / "ufcstats"
         self.manifest_path = self.settings.raw_dir / "manifest.jsonl"
 
-    def download_all(self, force: bool = False, limit_events: int | None = None) -> dict[str, int]:
+    def download_all(
+        self,
+        force: bool = False,
+        limit_events: int | None = None,
+        include_future: bool = False,
+    ) -> dict[str, int]:
         ensure_data_dirs(self.settings)
         index_path = self._download(EVENTS_INDEX_URL, "events_index", "all", force=force)
         events = parse_events_index(index_path.read_text(encoding="utf-8"))
+        if not include_future:
+            today = date.today()
+            events = [event for event in events if event.event_date <= today]
         if limit_events is not None:
             events = events[:limit_events]
         counts = {"events": 0, "fights": 0, "fighters": 0}
@@ -133,9 +141,10 @@ def infer_entity_id(url: str, entity_type: str) -> str:
 def download_ufcstats(
     force: bool = False,
     limit_events: int | None = None,
+    include_future: bool = False,
     sleep_seconds: float = 1.0,
     settings: Settings | None = None,
 ) -> dict[str, int]:
     return UFCStatsDownloader(settings=settings, sleep_seconds=sleep_seconds).download_all(
-        force=force, limit_events=limit_events
+        force=force, limit_events=limit_events, include_future=include_future
     )

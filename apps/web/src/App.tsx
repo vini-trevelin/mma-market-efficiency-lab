@@ -1,7 +1,18 @@
 import { Database, Play, RefreshCw, Table2, Terminal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getCommand, getHealth, getTable, startCommand, type CommandStatus, type Health, type TableResponse } from "./api";
+import type { ReactNode } from "react";
+import {
+  getCommand,
+  getHealth,
+  getTable,
+  startCommand,
+  type CommandStatus,
+  type Health,
+  type TableResponse,
+} from "./api";
+import { Button } from "./components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 
 const TABLES = [
   "events",
@@ -49,30 +60,37 @@ export function App() {
           <h1>MMA Market Efficiency Lab</h1>
           <p>Local UFCStats warehouse and point-in-time feature inspection.</p>
         </div>
-        <button className="icon-button" onClick={refreshHealth} aria-label="Refresh health">
+        <Button variant="outline" size="icon" onClick={refreshHealth} aria-label="Refresh health">
           <RefreshCw size={18} />
-        </button>
+        </Button>
       </header>
 
-      <nav className="tabs" aria-label="Primary">
-        <TabButton active={tab === "health"} onClick={() => setTab("health")} icon={<Database size={16} />} label="Health" />
-        <TabButton active={tab === "tables"} onClick={() => setTab("tables")} icon={<Table2 size={16} />} label="Tables" />
-        <TabButton active={tab === "commands"} onClick={() => setTab("commands")} icon={<Terminal size={16} />} label="Commands" />
-      </nav>
-
-      {tab === "health" && <HealthPanel health={health} error={healthError} />}
-      {tab === "tables" && <TablesPanel />}
-      {tab === "commands" && <CommandsPanel onChange={refreshHealth} />}
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+        <TabsList variant="line" aria-label="Primary">
+          <TabTrigger value="health" icon={<Database size={16} />} label="Health" />
+          <TabTrigger value="tables" icon={<Table2 size={16} />} label="Tables" />
+          <TabTrigger value="commands" icon={<Terminal size={16} />} label="Commands" />
+        </TabsList>
+        <TabsContent value="health">
+          <HealthPanel health={health} error={healthError} />
+        </TabsContent>
+        <TabsContent value="tables">
+          <TablesPanel />
+        </TabsContent>
+        <TabsContent value="commands">
+          <CommandsPanel onChange={refreshHealth} />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }
 
-function TabButton(props: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+function TabTrigger(props: { value: Tab; icon: ReactNode; label: string }) {
   return (
-    <button className={props.active ? "tab active" : "tab"} onClick={props.onClick}>
+    <TabsTrigger value={props.value}>
       {props.icon}
       <span>{props.label}</span>
-    </button>
+    </TabsTrigger>
   );
 }
 
@@ -151,10 +169,10 @@ function TablesPanel() {
             </option>
           ))}
         </select>
-        <button className="button" onClick={() => loadTable()}>
+        <Button variant="outline" onClick={() => loadTable()}>
           <RefreshCw size={16} />
           Refresh
-        </button>
+        </Button>
         {data && <span className="muted">{data.total} rows</span>}
       </div>
       {error && <div className="error">{error}</div>}
@@ -210,10 +228,10 @@ function CommandsPanel({ onChange }: { onChange: () => void }) {
     <section className="panel">
       <div className="command-grid">
         {COMMANDS.map((command) => (
-          <button className="button" key={command} onClick={() => runCommand(command)}>
+          <Button variant="outline" key={command} onClick={() => runCommand(command)}>
             <Play size={16} />
             {command}
-          </button>
+          </Button>
         ))}
       </div>
       {error && <div className="error">{error}</div>}

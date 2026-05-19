@@ -16,6 +16,7 @@ def main() -> None:
     download = subparsers.add_parser("download-ufcstats")
     download.add_argument("--force", action="store_true")
     download.add_argument("--limit-events", type=int)
+    download.add_argument("--include-future", action="store_true")
     download.add_argument("--sleep-seconds", type=float, default=1.0)
 
     subparsers.add_parser("parse-ufcstats")
@@ -28,6 +29,7 @@ def main() -> None:
         result = download_ufcstats(
             force=args.force,
             limit_events=args.limit_events,
+            include_future=args.include_future,
             sleep_seconds=args.sleep_seconds,
         )
     elif args.command == "parse-ufcstats":
