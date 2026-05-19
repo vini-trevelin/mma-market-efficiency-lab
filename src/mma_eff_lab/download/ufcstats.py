@@ -71,29 +71,50 @@ class UFCStatsDownloader:
             f"[ufcstats] discovered_events={discovered_count} selected_events={len(events)} "
             f"include_future={include_future} force={force}"
         )
-        counts = {"events": 0, "fights": 0, "fighters": 0}
+        counts = {"events": 0, "fights": 0, "fighters": 0, "download_failures": 0}
         for event_index, event in enumerate(events, start=1):
             self.log(
                 f"[event {event_index}/{len(events)}] {event.event_date} {event.name} "
                 f"event_id={event.event_id}"
             )
-            event_path = self._download(event.url, "events", event.event_id, force=force)
+            event_path = self._download(
+                event.url, "events", event.event_id, force=force, required=False
+            )
+            if event_path is None:
+                counts["download_failures"] += 1
+                self.log(f"[skip] event_id={event.event_id} reason=download_failed")
+                continue
             counts["events"] += 1
             result = parse_event_detail(
                 event_path.read_text(encoding="utf-8"), event_id=event.event_id, url=event.url
             )
+            event_participants = [
+                item for item in result.participants if item.event_id == event.event_id
+            ]
+            for participant in event_participants:
+                fighter_url = f"{BASE_URL}/fighter-details/{participant.fighter_id}"
+                fighter_path = self._download(
+                    fighter_url, "fighters", participant.fighter_id, force=force, required=False
+                )
+                if fighter_path is None:
+                    counts["download_failures"] += 1
+                else:
+                    counts["fighters"] += 1
             for fight in result.fights:
-                fight_path = self._download(fight.url, "fights", fight.fight_id, force=force)
-                counts["fights"] += 1
+                fight_path = self._download(
+                    fight.url, "fights", fight.fight_id, force=force, required=False
+                )
+                if fight_path is None:
+                    counts["download_failures"] += 1
+                    self.log(f"[skip] fight_id={fight.fight_id} reason=download_failed")
+                    continue
                 parsed_fight = parse_fight_detail(
                     fight_path.read_text(encoding="utf-8"),
                     event_id=event.event_id,
                     url=fight.url,
                 )
-                for participant in parsed_fight.participants:
-                    fighter_url = f"{BASE_URL}/fighter-details/{participant.fighter_id}"
-                    self._download(fighter_url, "fighters", participant.fighter_id, force=force)
-                    counts["fighters"] += 1
+                if parsed_fight:
+                    counts["fights"] += 1
             self.log(
                 f"[event {event_index}/{len(events)} done] fights={len(result.fights)} "
                 f"totals={counts}"
@@ -101,14 +122,22 @@ class UFCStatsDownloader:
         self.log(f"[ufcstats] complete totals={counts}")
         return counts
 
-    def _download(self, url: str, entity_type: str, entity_id: str, force: bool) -> Path:
+    def _download(
+        self, url: str, entity_type: str, entity_id: str, force: bool, required: bool = True
+    ) -> Path | None:
         path = self._path_for(entity_type, entity_id)
         if path.exists() and not force:
             self.log(f"[cache] {entity_type}/{entity_id}")
             return path
         path.parent.mkdir(parents=True, exist_ok=True)
         self.log(f"[download] {entity_type}/{entity_id} {url}")
-        response = self._get_with_retries(url)
+        try:
+            response = self._get_with_retries(url)
+        except RuntimeError as exc:
+            self.log(f"[error] {entity_type}/{entity_id} {url} {exc}")
+            if required:
+                raise
+            return None
         body = response.text
         path.write_text(body, encoding="utf-8")
         digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
