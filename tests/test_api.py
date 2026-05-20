@@ -14,16 +14,23 @@ def test_api_health_and_table_reads(tmp_path: Path) -> None:
     settings = replace(get_settings(tmp_path), repo_root=tmp_path)
     settings.warehouse_dir.mkdir(parents=True)
     with duckdb.connect(str(settings.warehouse_path)) as conn:
-        conn.execute("create table events(event_id varchar, name varchar)")
-        conn.execute("insert into events values ('e1', 'UFC Test')")
+        conn.execute(
+            "create table events(event_id varchar, name varchar, source varchar, promotion varchar)"
+        )
+        conn.execute("insert into events values ('e1', 'UFC Test', 'ufcstats', 'UFC')")
+        conn.execute("insert into events values ('e2', 'Bellator Test', 'sherdog', 'Bellator MMA')")
     api_module.settings = settings
     client = TestClient(api_module.app)
     health = client.get("/health")
     assert health.status_code == 200
-    assert health.json()["table_counts"]["events"] == 1
+    assert health.json()["table_counts"]["events"] == 2
     table = client.get("/tables/events?limit=10")
     assert table.status_code == 200
     assert table.json()["rows"][0]["event_id"] == "e1"
+    filtered = client.get("/tables/events?source=sherdog&promotion=Bellator")
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["rows"][0]["event_id"] == "e2"
 
 
 def test_api_rejects_unknown_command_and_running_lock(tmp_path: Path) -> None:
@@ -37,3 +44,4 @@ def test_api_rejects_unknown_command_and_running_lock(tmp_path: Path) -> None:
         assert client.post("/commands/make-reports").status_code == 409
     finally:
         api_module._lock.release()
+    assert "download-sherdog" in api_module.ALLOWED_COMMANDS

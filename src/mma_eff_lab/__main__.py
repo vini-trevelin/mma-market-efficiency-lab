@@ -3,10 +3,11 @@ from __future__ import annotations
 import argparse
 import json
 
+from mma_eff_lab.download.sherdog import PROMOTION_SETS, download_sherdog
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
 from mma_eff_lab.reports.static import make_reports
-from mma_eff_lab.warehouse.build import build_warehouse, parse_cached_ufcstats
+from mma_eff_lab.warehouse.build import build_warehouse, parse_cached_sherdog, parse_cached_ufcstats
 
 
 def main() -> None:
@@ -19,11 +20,20 @@ def main() -> None:
     download.add_argument("--include-future", action="store_true")
     download.add_argument("--sleep-seconds", type=float, default=1.0)
 
+    sherdog = subparsers.add_parser("download-sherdog")
+    sherdog.add_argument("--promotion-set", choices=sorted(PROMOTION_SETS), default="major")
+    sherdog.add_argument("--force", action="store_true")
+    sherdog.add_argument("--limit-events", type=int)
+    sherdog.add_argument("--include-future", action="store_true")
+    sherdog.add_argument("--sleep-seconds", type=float, default=1.0)
+
     subparsers.add_parser("parse-ufcstats")
+    subparsers.add_parser("parse-sherdog")
     subparsers.add_parser("build-warehouse")
     subparsers.add_parser("build-features")
     subparsers.add_parser("make-reports")
     subparsers.add_parser("full-pipeline")
+    subparsers.add_parser("full-pipeline-sherdog-major")
 
     args = parser.parse_args()
     if args.command == "download-ufcstats":
@@ -33,8 +43,18 @@ def main() -> None:
             include_future=args.include_future,
             sleep_seconds=args.sleep_seconds,
         )
+    elif args.command == "download-sherdog":
+        result = download_sherdog(
+            promotion_set=args.promotion_set,
+            force=args.force,
+            limit_events=args.limit_events,
+            include_future=args.include_future,
+            sleep_seconds=args.sleep_seconds,
+        )
     elif args.command == "parse-ufcstats":
         result = parse_cached_ufcstats()
+    elif args.command == "parse-sherdog":
+        result = parse_cached_sherdog()
     elif args.command == "build-warehouse":
         result = build_warehouse()
     elif args.command == "build-features":
@@ -45,6 +65,15 @@ def main() -> None:
         result = {
             "download": download_ufcstats(),
             "parse": parse_cached_ufcstats(),
+            "warehouse": build_warehouse(),
+            "features": build_pit_features(),
+            "reports": make_reports(),
+        }
+    elif args.command == "full-pipeline-sherdog-major":
+        result = {
+            "download": download_sherdog(promotion_set="major"),
+            "parse_ufcstats": parse_cached_ufcstats(),
+            "parse_sherdog": parse_cached_sherdog(),
             "warehouse": build_warehouse(),
             "features": build_pit_features(),
             "reports": make_reports(),

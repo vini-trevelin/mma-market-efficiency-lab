@@ -4,7 +4,16 @@ from dataclasses import replace
 from pathlib import Path
 
 from mma_eff_lab.config import get_settings
+from mma_eff_lab.download.sherdog import SherdogDownloader
 from mma_eff_lab.download.ufcstats import UFCStatsDownloader
+from tests.test_sherdog_parser import (
+    SHERDOG_BLUE_ID,
+    SHERDOG_EVENT_ID,
+    SHERDOG_RED_ID,
+    sherdog_event_html,
+    sherdog_fighter_html,
+    sherdog_org_html,
+)
 from tests.test_ufcstats_parser import (
     BLUE_ID,
     EVENT_ID_1,
@@ -31,6 +40,7 @@ class FakeSession:
     def __init__(self, responses: dict[str, str]) -> None:
         self.responses = responses
         self.calls: list[str] = []
+        self.headers: dict[str, str] = {}
 
     def get(self, url: str, timeout: float) -> FakeResponse:
         self.calls.append(url)
@@ -55,3 +65,27 @@ def test_downloader_caches_and_skips_existing_files(tmp_path: Path) -> None:
     assert first_call_count == 5
     assert len(session.calls) == first_call_count
     assert (settings.raw_dir / "manifest.jsonl").exists()
+
+
+def test_sherdog_downloader_caches_and_skips_existing_files(tmp_path: Path) -> None:
+    settings = replace(get_settings(tmp_path), repo_root=tmp_path)
+    responses = {
+        "https://www.sherdog.com/organizations/Bellator-MMA-1960": sherdog_org_html(),
+        f"https://www.sherdog.com/events/Bellator-MMA-Bellator-116-{SHERDOG_EVENT_ID}": (
+            sherdog_event_html()
+        ),
+        f"https://www.sherdog.com/fighter/Red-Fighter-{SHERDOG_RED_ID}": sherdog_fighter_html(
+            "Red Fighter"
+        ),
+        f"https://www.sherdog.com/fighter/Blue-Fighter-{SHERDOG_BLUE_ID}": sherdog_fighter_html(
+            "Blue Fighter"
+        ),
+    }
+    session = FakeSession(responses)
+    downloader = SherdogDownloader(settings=settings, session=session, sleep_seconds=0)
+    downloader.download_all(promotion_set="major", limit_events=1)
+    first_call_count = len(session.calls)
+    downloader.download_all(promotion_set="major", limit_events=1)
+    assert first_call_count == 4
+    assert len(session.calls) == first_call_count
+    assert (settings.raw_dir / "sherdog" / "events" / f"{SHERDOG_EVENT_ID}.html").exists()

@@ -20,6 +20,12 @@ const TABLES = [
   "fight_participants",
   "fighters",
   "fighter_fight_stats",
+  "source_events",
+  "source_fights",
+  "source_fight_participants",
+  "source_fighters",
+  "fighter_identity_links",
+  "parse_quarantine",
   "pit_fighter_features",
   "pit_matchup_features",
   "warehouse_quality",
@@ -27,11 +33,14 @@ const TABLES = [
 
 const COMMANDS = [
   "download-ufcstats",
+  "download-sherdog",
   "parse-ufcstats",
+  "parse-sherdog",
   "build-warehouse",
   "build-features",
   "make-reports",
   "full-pipeline",
+  "full-pipeline-sherdog-major",
 ];
 
 type Tab = "health" | "tables" | "commands";
@@ -60,7 +69,7 @@ export function App() {
       <header className="topbar">
         <div>
           <h1>MMA Market Efficiency Lab</h1>
-          <p>Local UFCStats warehouse and point-in-time feature inspection.</p>
+          <p>Local MMA warehouse and point-in-time feature inspection.</p>
         </div>
         <Button variant="outline" size="icon" onClick={refreshHealth} aria-label="Refresh health">
           <RefreshCw size={18} />
@@ -143,13 +152,15 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function TablesPanel() {
   const [name, setName] = useState(TABLES[0]);
+  const [source, setSource] = useState("");
+  const [promotion, setPromotion] = useState("");
   const [data, setData] = useState<TableResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const columns = useMemo(() => (data?.rows[0] ? Object.keys(data.rows[0]) : []), [data]);
 
   async function loadTable(tableName = name) {
     try {
-      setData(await getTable(tableName));
+      setData(await getTable(tableName, 100, 0, { source, promotion }));
       setError(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
@@ -159,7 +170,7 @@ function TablesPanel() {
 
   useEffect(() => {
     void loadTable(name);
-  }, [name]);
+  }, [name, source, promotion]);
 
   return (
     <section className="panel">
@@ -175,6 +186,17 @@ function TablesPanel() {
           <RefreshCw size={16} />
           Refresh
         </Button>
+        <select value={source} onChange={(event) => setSource(event.target.value)} aria-label="Source">
+          <option value="">all sources</option>
+          <option value="ufcstats">ufcstats</option>
+          <option value="sherdog">sherdog</option>
+        </select>
+        <input
+          value={promotion}
+          onChange={(event) => setPromotion(event.target.value)}
+          placeholder="promotion filter"
+          aria-label="Promotion"
+        />
         {data && <span className="muted">{data.total} rows</span>}
       </div>
       {error && <div className="error">{error}</div>}
@@ -287,7 +309,7 @@ function formatValue(value: unknown): string {
 }
 
 function summarizeProgress(run: CommandStatus): string | null {
-  const matches = [...run.log.matchAll(/\[event (\d+)\/(\d+)(?: done)?\]/g)];
+  const matches = [...run.log.matchAll(/\[(?:sherdog )?event (\d+)\/(\d+)(?: done)?\]/g)];
   const latest = matches.at(-1);
   if (!latest) return null;
   const current = Number(latest[1]);

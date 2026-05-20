@@ -34,17 +34,26 @@ ALLOWED_TABLES = {
     "fight_participants",
     "fighters",
     "fighter_fight_stats",
+    "source_events",
+    "source_fights",
+    "source_fight_participants",
+    "source_fighters",
+    "fighter_identity_links",
+    "parse_quarantine",
     "pit_fighter_features",
     "pit_matchup_features",
     "warehouse_quality",
 }
 ALLOWED_COMMANDS = {
     "download-ufcstats": ["download-ufcstats"],
+    "download-sherdog": ["download-sherdog"],
     "parse-ufcstats": ["parse-ufcstats"],
+    "parse-sherdog": ["parse-sherdog"],
     "build-warehouse": ["build-warehouse"],
     "build-features": ["build-features"],
     "make-reports": ["make-reports"],
     "full-pipeline": ["full-pipeline"],
+    "full-pipeline-sherdog-major": ["full-pipeline-sherdog-major"],
 }
 _lock = threading.Lock()
 _runs: dict[str, dict[str, Any]] = {}
@@ -61,7 +70,13 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/tables/{name}")
-def table(name: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+def table(
+    name: str,
+    limit: int = 100,
+    offset: int = 0,
+    source: str | None = None,
+    promotion: str | None = None,
+) -> dict[str, Any]:
     if name not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail="Table not allowed")
     if not settings.warehouse_path.exists():
@@ -71,8 +86,11 @@ def table(name: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
     with duckdb.connect(str(settings.warehouse_path), read_only=True) as conn:
         if not _table_exists(conn, name):
             raise HTTPException(status_code=404, detail="Table not found")
-        total = conn.execute(f"select count(*) from {name}").fetchone()[0]
-        rows = conn.execute(f"select * from {name} limit ? offset ?", [limit, offset]).fetchdf()
+        where_sql, params = _table_filters(conn, name, source=source, promotion=promotion)
+        total = conn.execute(f"select count(*) from {name}{where_sql}", params).fetchone()[0]
+        rows = conn.execute(
+            f"select * from {name}{where_sql} limit ? offset ?", [*params, limit, offset]
+        ).fetchdf()
     return {"name": name, "total": total, "limit": limit, "offset": offset, "rows": _records(rows)}
 
 
@@ -136,6 +154,27 @@ def _table_exists(conn: duckdb.DuckDBPyConnection, name: str) -> bool:
             [name],
         ).fetchone()
     )
+
+
+def _table_filters(
+    conn: duckdb.DuckDBPyConnection,
+    name: str,
+    source: str | None,
+    promotion: str | None,
+) -> tuple[str, list[str]]:
+    columns = {
+        row[1]
+        for row in conn.execute(f"pragma table_info('{name}')").fetchall()
+    }
+    clauses = []
+    params = []
+    if source and "source" in columns:
+        clauses.append("source = ?")
+        params.append(source)
+    if promotion and "promotion" in columns:
+        clauses.append("promotion ilike ?")
+        params.append(f"%{promotion}%")
+    return (f" where {' and '.join(clauses)}" if clauses else "", params)
 
 
 def _records(frame: Any) -> list[dict[str, Any]]:

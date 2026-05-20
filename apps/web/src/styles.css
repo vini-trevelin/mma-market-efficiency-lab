@@ -98,7 +98,8 @@ body {
 }
 
 button,
-select {
+select,
+input {
   font: inherit;
 }
 
@@ -135,7 +136,8 @@ p {
   align-items: center;
 }
 
-select {
+select,
+input {
   min-height: 36px;
   border: 1px solid #c9d1d6;
   background: #ffffff;
@@ -143,7 +145,8 @@ select {
   border-radius: 6px;
 }
 
-select {
+select,
+input {
   padding: 0 10px;
 }
 

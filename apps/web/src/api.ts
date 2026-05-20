@@ -39,8 +39,16 @@ export function getHealth() {
   return request<Health>("/health");
 }
 
-export function getTable(name: string, limit = 100, offset = 0) {
-  return request<TableResponse>(`/tables/${name}?limit=${limit}&offset=${offset}`);
+export function getTable(
+  name: string,
+  limit = 100,
+  offset = 0,
+  filters: { source?: string; promotion?: string } = {},
+) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (filters.source) params.set("source", filters.source);
+  if (filters.promotion) params.set("promotion", filters.promotion);
+  return request<TableResponse>(`/tables/${name}?${params.toString()}`);
 }
 
 export function startCommand(name: string) {
