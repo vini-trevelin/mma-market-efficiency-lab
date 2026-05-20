@@ -125,6 +125,17 @@ EMPTY_COLUMNS = {
     "parse_quarantine": ["source", "entity_type", "source_entity_id", "promotion", "reason", "url"],
 }
 
+EMPTY_TABLE_SCHEMAS = {
+    "parse_quarantine": {
+        "source": "varchar",
+        "entity_type": "varchar",
+        "source_entity_id": "varchar",
+        "promotion": "varchar",
+        "reason": "varchar",
+        "url": "varchar",
+    }
+}
+
 
 def parse_cached_ufcstats(settings: Settings | None = None) -> dict[str, int]:
     settings = settings or get_settings()
@@ -190,6 +201,11 @@ def table_counts(db_path: Path) -> dict[str, int]:
 
 def _write_table(conn: duckdb.DuckDBPyConnection, name: str, frame: pd.DataFrame) -> None:
     conn.execute(f"drop table if exists {name}")
+    if frame.empty and name in EMPTY_TABLE_SCHEMAS:
+        schema = EMPTY_TABLE_SCHEMAS[name]
+        column_sql = ", ".join(f"{column} {sql_type}" for column, sql_type in schema.items())
+        conn.execute(f"create table {name} ({column_sql})")
+        return
     conn.register("frame", frame)
     if frame.empty:
         conn.execute(f"create table {name} as select * from frame where false")

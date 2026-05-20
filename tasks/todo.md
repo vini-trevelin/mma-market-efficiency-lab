@@ -37,3 +37,20 @@
 - Limited Sherdog smoke passed with `download-sherdog --limit-events 1 --sleep-seconds 0`.
 - Local API/UI restarted at `http://127.0.0.1:8000` and `http://127.0.0.1:5173`.
 - API source filter smoke passed for `source_events?source=sherdog&promotion=Bellator`.
+
+# Database Audit UI
+
+## Plan
+
+- [x] Add `validate-warehouse` command that writes derived audit tables without mutating core warehouse tables.
+- [x] Add audit API endpoints for summary, checks, coverage, identity, and quarantine review.
+- [x] Expand the UI into read-only Overview, Coverage, Quality, Identity, Quarantine, Tables, and Commands tabs.
+- [x] Improve generic table pagination/filtering and preserve useful filters in URL query params.
+- [x] Add validation/API tests and keep frontend build verification green.
+
+## Review / Results
+
+- `uv run ruff check .` passed.
+- `uv run pytest` passed: 19 tests.
+- `cd apps/web && npm run build` passed.
+- Did not run `validate-warehouse` against the active local warehouse because the full Sherdog scrape is still running.

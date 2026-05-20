@@ -134,6 +134,7 @@ p {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  margin-bottom: 10px;
 }
 
 select,
@@ -220,6 +221,55 @@ tr:last-child td {
   margin-top: 12px;
   color: #8f1d1d;
   overflow-wrap: anywhere;
+}
+
+.empty {
+  border: 1px dashed #c9d1d6;
+  border-radius: 6px;
+  color: #63727a;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.badge {
+  border: 1px solid #c9d1d6;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.badge.pass,
+.badge.succeeded {
+  background: #edf7ee;
+  border-color: #b7d8ba;
+  color: #1f6f2a;
+}
+
+.badge.warn,
+.badge.running {
+  background: #fff7df;
+  border-color: #ead28b;
+  color: #805b00;
+}
+
+.badge.fail,
+.badge.failed {
+  background: #fdeeee;
+  border-color: #edb8b8;
+  color: #8f1d1d;
+}
+
+a {
+  color: #245f9f;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .command-grid {

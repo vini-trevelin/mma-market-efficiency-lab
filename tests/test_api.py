@@ -45,3 +45,38 @@ def test_api_rejects_unknown_command_and_running_lock(tmp_path: Path) -> None:
     finally:
         api_module._lock.release()
     assert "download-sherdog" in api_module.ALLOWED_COMMANDS
+    assert "validate-warehouse" in api_module.ALLOWED_COMMANDS
+
+
+def test_api_audit_endpoints_empty_and_filtered_reads(tmp_path: Path) -> None:
+    settings = replace(get_settings(tmp_path), repo_root=tmp_path)
+    settings.warehouse_dir.mkdir(parents=True)
+    with duckdb.connect(str(settings.warehouse_path)) as conn:
+        conn.execute(
+            """
+            create table audit_checks(
+              status varchar,
+              table_name varchar,
+              check_name varchar,
+              metric_value double,
+              threshold varchar,
+              details varchar
+            )
+            """
+        )
+        conn.execute(
+            """
+            insert into audit_checks
+            values ('fail', 'events', 'unique_event_id', 1, '0', 'duplicate')
+            """
+        )
+    api_module.settings = settings
+    client = TestClient(api_module.app)
+    missing = client.get("/audit/summary")
+    assert missing.status_code == 200
+    assert missing.json()["exists"] is False
+    checks = client.get("/audit/checks?status=fail&table_name=events")
+    assert checks.status_code == 200
+    assert checks.json()["total"] == 1
+    assert checks.json()["rows"][0]["check_name"] == "unique_event_id"
+    assert client.get("/audit/checks?status=pass").json()["total"] == 0

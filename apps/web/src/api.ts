@@ -9,6 +9,7 @@ export type Health = {
 
 export type TableResponse = {
   name: string;
+  exists?: boolean;
   total: number;
   limit: number;
   offset: number;
@@ -57,4 +58,36 @@ export function startCommand(name: string) {
 
 export function getCommand(runId: string) {
   return request<CommandStatus>(`/commands/${runId}`);
+}
+
+export function getAuditSummary() {
+  return request<TableResponse>("/audit/summary");
+}
+
+export function getAuditChecks(filters: { status?: string; table_name?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.status) params.set("status", filters.status);
+  if (filters.table_name) params.set("table_name", filters.table_name);
+  return request<TableResponse>(`/audit/checks?${params.toString()}`);
+}
+
+export function getAuditCoverage(filters: { source?: string; promotion?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.source) params.set("source", filters.source);
+  if (filters.promotion) params.set("promotion", filters.promotion);
+  return request<TableResponse>(`/audit/coverage?${params.toString()}`);
+}
+
+export function getAuditIdentity(filters: { source?: string; link_method?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.source) params.set("source", filters.source);
+  if (filters.link_method) params.set("link_method", filters.link_method);
+  return request<TableResponse>(`/audit/identity?${params.toString()}`);
+}
+
+export function getAuditQuarantine(filters: { reason?: string; promotion?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.reason) params.set("reason", filters.reason);
+  if (filters.promotion) params.set("promotion", filters.promotion);
+  return request<TableResponse>(`/audit/quarantine?${params.toString()}`);
 }

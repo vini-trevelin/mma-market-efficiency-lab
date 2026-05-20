@@ -43,6 +43,19 @@ ALLOWED_TABLES = {
     "pit_fighter_features",
     "pit_matchup_features",
     "warehouse_quality",
+    "audit_summary",
+    "audit_checks",
+    "audit_coverage",
+    "audit_missingness",
+    "audit_identity",
+    "audit_pit",
+}
+AUDIT_TABLES = {
+    "summary": "audit_summary",
+    "checks": "audit_checks",
+    "coverage": "audit_coverage",
+    "identity": "audit_identity",
+    "quarantine": "parse_quarantine",
 }
 ALLOWED_COMMANDS = {
     "download-ufcstats": ["download-ufcstats"],
@@ -52,6 +65,7 @@ ALLOWED_COMMANDS = {
     "build-warehouse": ["build-warehouse"],
     "build-features": ["build-features"],
     "make-reports": ["make-reports"],
+    "validate-warehouse": ["validate-warehouse"],
     "full-pipeline": ["full-pipeline"],
     "full-pipeline-sherdog-major": ["full-pipeline-sherdog-major"],
 }
@@ -79,19 +93,102 @@ def table(
 ) -> dict[str, Any]:
     if name not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail="Table not allowed")
+    return _table_response(name, limit, offset, {"source": source, "promotion": promotion})
+
+
+@app.get("/audit/summary")
+def audit_summary() -> dict[str, Any]:
+    return _table_response("audit_summary", 500, 0, {}, allow_missing=True)
+
+
+@app.get("/audit/checks")
+def audit_checks(
+    status: str | None = None, table_name: str | None = None, limit: int = 500, offset: int = 0
+) -> dict[str, Any]:
+    return _table_response(
+        "audit_checks",
+        limit,
+        offset,
+        {"status": status, "table_name": table_name},
+        allow_missing=True,
+    )
+
+
+@app.get("/audit/coverage")
+def audit_coverage(
+    source: str | None = None, promotion: str | None = None, limit: int = 500, offset: int = 0
+) -> dict[str, Any]:
+    return _table_response(
+        "audit_coverage",
+        limit,
+        offset,
+        {"source": source, "promotion": promotion},
+        allow_missing=True,
+    )
+
+
+@app.get("/audit/identity")
+def audit_identity(
+    source: str | None = None, link_method: str | None = None, limit: int = 500, offset: int = 0
+) -> dict[str, Any]:
+    return _table_response(
+        "audit_identity",
+        limit,
+        offset,
+        {"source": source, "link_method": link_method},
+        allow_missing=True,
+    )
+
+
+@app.get("/audit/quarantine")
+def audit_quarantine(
+    reason: str | None = None, promotion: str | None = None, limit: int = 500, offset: int = 0
+) -> dict[str, Any]:
+    return _table_response(
+        "parse_quarantine",
+        limit,
+        offset,
+        {"reason": reason, "promotion": promotion},
+        allow_missing=True,
+    )
+
+
+def _table_response(
+    name: str,
+    limit: int,
+    offset: int,
+    filters: dict[str, str | None],
+    allow_missing: bool = False,
+) -> dict[str, Any]:
     if not settings.warehouse_path.exists():
         raise HTTPException(status_code=404, detail="Warehouse not found")
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     with duckdb.connect(str(settings.warehouse_path), read_only=True) as conn:
         if not _table_exists(conn, name):
+            if allow_missing:
+                return {
+                    "name": name,
+                    "exists": False,
+                    "total": 0,
+                    "limit": limit,
+                    "offset": offset,
+                    "rows": [],
+                }
             raise HTTPException(status_code=404, detail="Table not found")
-        where_sql, params = _table_filters(conn, name, source=source, promotion=promotion)
+        where_sql, params = _table_filters(conn, name, filters)
         total = conn.execute(f"select count(*) from {name}{where_sql}", params).fetchone()[0]
         rows = conn.execute(
             f"select * from {name}{where_sql} limit ? offset ?", [*params, limit, offset]
         ).fetchdf()
-    return {"name": name, "total": total, "limit": limit, "offset": offset, "rows": _records(rows)}
+    return {
+        "name": name,
+        "exists": True,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "rows": _records(rows),
+    }
 
 
 @app.post("/commands/{name}")
@@ -159,8 +256,7 @@ def _table_exists(conn: duckdb.DuckDBPyConnection, name: str) -> bool:
 def _table_filters(
     conn: duckdb.DuckDBPyConnection,
     name: str,
-    source: str | None,
-    promotion: str | None,
+    filters: dict[str, str | None],
 ) -> tuple[str, list[str]]:
     columns = {
         row[1]
@@ -168,12 +264,15 @@ def _table_filters(
     }
     clauses = []
     params = []
-    if source and "source" in columns:
-        clauses.append("source = ?")
-        params.append(source)
-    if promotion and "promotion" in columns:
-        clauses.append("promotion ilike ?")
-        params.append(f"%{promotion}%")
+    for column, value in filters.items():
+        if not value or column not in columns:
+            continue
+        if column in {"promotion", "reason", "details"}:
+            clauses.append(f"{column} ilike ?")
+            params.append(f"%{value}%")
+        else:
+            clauses.append(f"{column} = ?")
+            params.append(value)
     return (f" where {' and '.join(clauses)}" if clauses else "", params)
 
 

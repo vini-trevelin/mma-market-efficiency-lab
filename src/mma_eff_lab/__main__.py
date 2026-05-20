@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
+from mma_eff_lab.audit.warehouse import validate_warehouse
 from mma_eff_lab.download.sherdog import PROMOTION_SETS, download_sherdog
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
@@ -32,6 +33,7 @@ def main() -> None:
     subparsers.add_parser("build-warehouse")
     subparsers.add_parser("build-features")
     subparsers.add_parser("make-reports")
+    subparsers.add_parser("validate-warehouse")
     subparsers.add_parser("full-pipeline")
     subparsers.add_parser("full-pipeline-sherdog-major")
 
@@ -61,12 +63,15 @@ def main() -> None:
         result = build_pit_features()
     elif args.command == "make-reports":
         result = make_reports()
+    elif args.command == "validate-warehouse":
+        result = validate_warehouse()
     elif args.command == "full-pipeline":
         result = {
             "download": download_ufcstats(),
             "parse": parse_cached_ufcstats(),
             "warehouse": build_warehouse(),
             "features": build_pit_features(),
+            "audit": validate_warehouse(),
             "reports": make_reports(),
         }
     elif args.command == "full-pipeline-sherdog-major":
@@ -76,6 +81,7 @@ def main() -> None:
             "parse_sherdog": parse_cached_sherdog(),
             "warehouse": build_warehouse(),
             "features": build_pit_features(),
+            "audit": validate_warehouse(),
             "reports": make_reports(),
         }
     else:
