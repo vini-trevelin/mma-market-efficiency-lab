@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -25,6 +26,7 @@ SOURCE_TABLES = [
     "source_fighters",
     "parse_quarantine",
 ]
+MANUAL_OVERRIDE_TABLE = "fighter_identity_manual_overrides"
 
 EMPTY_COLUMNS = {
     "events": ["event_id", "name", "event_date", "location", "url"],
@@ -123,6 +125,16 @@ EMPTY_COLUMNS = {
         "url",
     ],
     "parse_quarantine": ["source", "entity_type", "source_entity_id", "promotion", "reason", "url"],
+    MANUAL_OVERRIDE_TABLE: [
+        "source",
+        "source_fighter_id",
+        "target_source",
+        "target_source_fighter_id",
+        "decision",
+        "note",
+        "created_at_utc",
+        "updated_at_utc",
+    ],
 }
 
 EMPTY_TABLE_SCHEMAS = {
@@ -133,7 +145,38 @@ EMPTY_TABLE_SCHEMAS = {
         "promotion": "varchar",
         "reason": "varchar",
         "url": "varchar",
-    }
+    },
+    MANUAL_OVERRIDE_TABLE: {
+        "source": "varchar",
+        "source_fighter_id": "varchar",
+        "target_source": "varchar",
+        "target_source_fighter_id": "varchar",
+        "decision": "varchar",
+        "note": "varchar",
+        "created_at_utc": "varchar",
+        "updated_at_utc": "varchar",
+    },
+}
+
+EMPTY_FRAME_DTYPES = {
+    "parse_quarantine": {
+        "source": "string",
+        "entity_type": "string",
+        "source_entity_id": "string",
+        "promotion": "string",
+        "reason": "string",
+        "url": "string",
+    },
+    MANUAL_OVERRIDE_TABLE: {
+        "source": "string",
+        "source_fighter_id": "string",
+        "target_source": "string",
+        "target_source_fighter_id": "string",
+        "decision": "string",
+        "note": "string",
+        "created_at_utc": "string",
+        "updated_at_utc": "string",
+    },
 }
 
 
@@ -159,7 +202,7 @@ def parse_cached_sherdog(settings: Settings | None = None) -> dict[str, int]:
     parsed_dir.mkdir(parents=True, exist_ok=True)
     counts = {}
     for name, rows in parsed.items():
-        frame = pd.DataFrame(rows, columns=EMPTY_COLUMNS[name])
+        frame = _typed_frame(rows, name)
         counts[name] = len(frame)
         frame.to_parquet(parsed_dir / f"{name}.parquet", index=False)
     (parsed_dir / "sherdog_summary.json").write_text(
@@ -176,7 +219,8 @@ def build_warehouse(settings: Settings | None = None) -> dict[str, int]:
         parse_cached_ufcstats(settings)
         parse_cached_sherdog(settings)
     settings.warehouse_path.parent.mkdir(parents=True, exist_ok=True)
-    frames = _build_canonical_frames(parsed_dir)
+    manual_overrides = _read_manual_overrides(settings)
+    frames = _build_canonical_frames(parsed_dir, manual_overrides)
     counts: dict[str, int] = {}
     with duckdb.connect(str(settings.warehouse_path)) as conn:
         for table, frame in frames.items():
@@ -229,12 +273,17 @@ def _add_quality_views(conn: duckdb.DuckDBPyConnection) -> None:
         union all select 'source_fight_participants', count(*) from source_fight_participants
         union all select 'source_fighters', count(*) from source_fighters
         union all select 'fighter_identity_links', count(*) from fighter_identity_links
+        union all
+        select 'fighter_identity_manual_overrides', count(*)
+        from fighter_identity_manual_overrides
         union all select 'parse_quarantine', count(*) from parse_quarantine
         """
     )
 
 
-def _build_canonical_frames(parsed_dir: Path) -> dict[str, pd.DataFrame]:
+def _build_canonical_frames(
+    parsed_dir: Path, manual_overrides: pd.DataFrame
+) -> dict[str, pd.DataFrame]:
     ufc = {table: _read_table(parsed_dir, table) for table in TABLES}
     sherdog = {table: _read_table(parsed_dir, table) for table in SOURCE_TABLES}
     ufc_source = _ufc_source_frames(ufc)
@@ -251,19 +300,20 @@ def _build_canonical_frames(parsed_dir: Path) -> dict[str, pd.DataFrame]:
             [ufc_source["source_fight_participants"], sherdog["source_fight_participants"]],
             ignore_index=True,
         ),
-        ["source", "source_fight_id", "source_fighter_id"],
+        ["source", "source_fight_id", "source_fighter_id", "corner"],
     )
     source_fighters = _dedupe(
         pd.concat([ufc_source["source_fighters"], sherdog["source_fighters"]], ignore_index=True),
         ["source", "source_fighter_id"],
     )
-    identity_links = _identity_links(source_fighters)
+    identity_links = _identity_links(source_fighters, manual_overrides)
     canonical_fighters = _canonical_fighters(source_fighters, identity_links)
     return {
         "source_events": source_events,
         "source_fights": source_fights,
         "source_fight_participants": source_participants,
         "source_fighters": source_fighters,
+        MANUAL_OVERRIDE_TABLE: manual_overrides,
         "fighter_identity_links": identity_links,
         "parse_quarantine": sherdog["parse_quarantine"],
         "events": _canonical_events(source_events),
@@ -277,12 +327,39 @@ def _build_canonical_frames(parsed_dir: Path) -> dict[str, pd.DataFrame]:
 def _read_table(parsed_dir: Path, table: str) -> pd.DataFrame:
     path = parsed_dir / f"{table}.parquet"
     if not path.exists():
-        return pd.DataFrame(columns=EMPTY_COLUMNS[table])
+        return _typed_frame([], table)
     frame = pd.read_parquet(path)
     for column in EMPTY_COLUMNS[table]:
         if column not in frame:
             frame[column] = None
-    return frame[EMPTY_COLUMNS[table]]
+    frame = frame[EMPTY_COLUMNS[table]]
+    if frame.empty and table in EMPTY_FRAME_DTYPES:
+        return _typed_frame([], table)
+    return frame
+
+
+def _read_manual_overrides(settings: Settings) -> pd.DataFrame:
+    if not settings.warehouse_path.exists():
+        return _typed_frame([], MANUAL_OVERRIDE_TABLE)
+    with duckdb.connect(str(settings.warehouse_path), read_only=True) as conn:
+        exists = conn.execute(
+            """
+            select 1
+            from information_schema.tables
+            where table_schema = 'main' and table_name = ?
+            """,
+            [MANUAL_OVERRIDE_TABLE],
+        ).fetchone()
+        if not exists:
+            return _typed_frame([], MANUAL_OVERRIDE_TABLE)
+        frame = conn.execute(f"select * from {MANUAL_OVERRIDE_TABLE}").fetchdf()
+    for column in EMPTY_COLUMNS[MANUAL_OVERRIDE_TABLE]:
+        if column not in frame:
+            frame[column] = None
+    frame = frame[EMPTY_COLUMNS[MANUAL_OVERRIDE_TABLE]]
+    if frame.empty:
+        return _typed_frame([], MANUAL_OVERRIDE_TABLE)
+    return frame
 
 
 def _ufc_source_frames(ufc: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
@@ -452,25 +529,119 @@ def _canonical_stats(stats: pd.DataFrame) -> pd.DataFrame:
     return frame[columns]
 
 
-def _identity_links(source_fighters: pd.DataFrame) -> pd.DataFrame:
+def _identity_links(
+    source_fighters: pd.DataFrame, manual_overrides: pd.DataFrame
+) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
+    manual_overrides = _normalize_manual_overrides(manual_overrides)
     ufc = source_fighters[source_fighters["source"] == "ufcstats"].copy()
-    ufc["identity_key"] = ufc.apply(_identity_key, axis=1)
-    unique_ufc = {
+    ufc_ids = set(ufc["source_fighter_id"].astype(str))
+    ufc["exact_name_key"] = ufc.apply(_exact_name_key, axis=1)
+    ufc["cleaned_name_key"] = ufc.apply(_cleaned_name_key, axis=1)
+    ufc["exact_identity_key"] = ufc.apply(_identity_key, axis=1)
+    ufc["cleaned_identity_key"] = ufc.apply(
+        lambda row: _identity_key(row, cleaned=True), axis=1
+    )
+    unique_exact_ufc = {
         key: group.iloc[0]["source_fighter_id"]
-        for key, group in ufc.dropna(subset=["identity_key"]).groupby("identity_key")
+        for key, group in ufc.dropna(subset=["exact_identity_key"]).groupby("exact_identity_key")
         if len(group) == 1
     }
+    unique_cleaned_ufc = {
+        key: group.iloc[0]["source_fighter_id"]
+        for key, group in ufc.dropna(subset=["cleaned_identity_key"]).groupby(
+            "cleaned_identity_key"
+        )
+        if len(group) == 1
+    }
+    approved = manual_overrides[manual_overrides["decision"] == "approved"].copy()
+    accepted_unresolved = manual_overrides[
+        manual_overrides["decision"] == "accepted_unresolved"
+    ].copy()
+    approved_targets = approved.groupby("source_fighter_id")["target_source_fighter_id"].nunique()
+    conflicting = approved_targets[approved_targets > 1]
+    if not conflicting.empty:
+        conflict_ids = ", ".join(sorted(conflicting.index.astype(str).tolist()))
+        raise ValueError(
+            f"Conflicting approved manual overrides for source_fighter_id: {conflict_ids}"
+        )
+    primary_decisions = manual_overrides[
+        manual_overrides["decision"].isin({"approved", "accepted_unresolved"})
+    ].groupby("source_fighter_id")["decision"].count()
+    conflicting_primary = primary_decisions[primary_decisions > 1]
+    if not conflicting_primary.empty:
+        conflict_ids = ", ".join(sorted(conflicting_primary.index.astype(str).tolist()))
+        raise ValueError(
+            "Conflicting primary manual identity decisions for source_fighter_id: "
+            + conflict_ids
+        )
+    missing_targets = sorted(
+        set(approved["target_source_fighter_id"].astype(str)) - ufc_ids
+    )
+    if missing_targets:
+        raise ValueError(
+            "Approved manual override targets not found in UFCStats source_fighters: "
+            + ", ".join(missing_targets)
+        )
+    approved_map = {
+        str(row["source_fighter_id"]): {
+            "target_source_fighter_id": str(row["target_source_fighter_id"]),
+            "note": row.get("note"),
+        }
+        for row in approved.to_dict("records")
+    }
+    accepted_unresolved_map = {
+        str(row["source_fighter_id"]): row.get("note")
+        for row in accepted_unresolved.to_dict("records")
+    }
+    rejected_pairs = {
+        (str(row["source_fighter_id"]), str(row["target_source_fighter_id"]))
+        for row in manual_overrides[manual_overrides["decision"] == "rejected"].to_dict("records")
+        if row.get("target_source_fighter_id") not in (None, "")
+    }
     for row in source_fighters.to_dict("records"):
-        source = row["source"]
-        source_fighter_id = row["source_fighter_id"]
+        source = str(row["source"])
+        source_fighter_id = str(row["source_fighter_id"])
         canonical_fighter_id = _canonical_id(source, source_fighter_id)
         link_method = "source_self"
         confidence = 1.0
-        key = _identity_key(row)
-        if source == "sherdog" and key and key in unique_ufc:
-            canonical_fighter_id = _canonical_id("ufcstats", unique_ufc[key])
-            link_method = "exact_name_dob"
+        exact_name_key = _exact_name_key(row)
+        cleaned_name_key = _cleaned_name_key(row)
+        exact_identity_key = _identity_key(row)
+        cleaned_identity_key = _identity_key(row, cleaned=True)
+        match_reason = "source_self"
+        override_note = None
+        approved_override = approved_map.get(source_fighter_id)
+        if source == "sherdog" and approved_override:
+            target_id = approved_override["target_source_fighter_id"]
+            canonical_fighter_id = _canonical_id("ufcstats", target_id)
+            link_method = "manual_override"
+            confidence = 1.0
+            match_reason = "manual override approval"
+            override_note = approved_override["note"]
+        elif source == "sherdog" and source_fighter_id in accepted_unresolved_map:
+            link_method = "manual_unresolved"
+            confidence = 1.0
+            match_reason = "manual unresolved acceptance"
+            override_note = accepted_unresolved_map[source_fighter_id]
+        elif source == "sherdog" and exact_identity_key and exact_identity_key in unique_exact_ufc:
+            target_id = str(unique_exact_ufc[exact_identity_key])
+            if (source_fighter_id, target_id) not in rejected_pairs:
+                canonical_fighter_id = _canonical_id("ufcstats", target_id)
+                link_method = "exact_name_dob"
+                confidence = 1.0
+                match_reason = "exact normalized full name + exact dob"
+        elif (
+            source == "sherdog"
+            and cleaned_identity_key
+            and cleaned_identity_key in unique_cleaned_ufc
+        ):
+            target_id = str(unique_cleaned_ufc[cleaned_identity_key])
+            if (source_fighter_id, target_id) not in rejected_pairs:
+                canonical_fighter_id = _canonical_id("ufcstats", target_id)
+                link_method = "cleaned_name_dob"
+                confidence = 0.95
+                match_reason = "cleaned full name + exact dob"
         rows.append(
             {
                 "source": source,
@@ -480,6 +651,10 @@ def _identity_links(source_fighters: pd.DataFrame) -> pd.DataFrame:
                 "dob": row.get("dob"),
                 "link_method": link_method,
                 "confidence": confidence,
+                "exact_name_key": exact_name_key,
+                "cleaned_name_key": cleaned_name_key,
+                "match_reason": match_reason,
+                "override_note": override_note,
             }
         )
     return pd.DataFrame(
@@ -492,6 +667,10 @@ def _identity_links(source_fighters: pd.DataFrame) -> pd.DataFrame:
             "dob",
             "link_method",
             "confidence",
+            "exact_name_key",
+            "cleaned_name_key",
+            "match_reason",
+            "override_note",
         ],
     )
 
@@ -544,18 +723,38 @@ def _identity_map(links: pd.DataFrame) -> dict[tuple[str, str], str]:
     }
 
 
-def _identity_key(row: pd.Series | dict[str, object]) -> str | None:
+def _identity_key(row: pd.Series | dict[str, object], cleaned: bool = False) -> str | None:
     dob = row.get("dob")
     if dob is None or pd.isna(dob):
         return None
-    name = _normalize_name(str(row.get("full_name") or ""))
+    name = _cleaned_name_key(row) if cleaned else _exact_name_key(row)
     if not name:
         return None
     return f"{name}|{dob}"
 
 
+def _exact_name_key(row: pd.Series | dict[str, object]) -> str:
+    return _normalize_name(str(row.get("full_name") or ""))
+
+
+def _cleaned_name_key(row: pd.Series | dict[str, object]) -> str:
+    value = str(row.get("full_name") or "")
+    value = _strip_record_suffix(value)
+    value = _strip_quoted_nickname(value)
+    return _normalize_name(value)
+
+
 def _normalize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _strip_quoted_nickname(value: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r'"[^"]+"', "", str(value))).strip()
+
+
+def _strip_record_suffix(value: str) -> str:
+    stripped = re.sub(r"\s+Record:\s+.+$", "", str(value), flags=re.I)
+    return re.sub(r"\s+", " ", stripped).strip()
 
 
 def _canonical_id(source: object, source_id: object) -> str:
@@ -568,8 +767,60 @@ def _dedupe(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
     return frame.drop_duplicates(keys, keep="first").reset_index(drop=True)
 
 
+def _typed_frame(rows: list[dict[str, object]], table: str) -> pd.DataFrame:
+    frame = pd.DataFrame(rows, columns=EMPTY_COLUMNS[table])
+    for column, dtype in EMPTY_FRAME_DTYPES.get(table, {}).items():
+        frame[column] = pd.Series(frame[column], dtype=dtype)
+    return frame
+
+
 def _first_non_null(frame: pd.DataFrame, column: str) -> object:
     values = frame[column].dropna()
     if values.empty:
         return None
     return values.iloc[0]
+
+
+def _normalize_manual_overrides(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return _typed_frame([], MANUAL_OVERRIDE_TABLE)
+    normalized = frame.copy()
+    for column in EMPTY_COLUMNS[MANUAL_OVERRIDE_TABLE]:
+        if column not in normalized:
+            normalized[column] = None
+    normalized = normalized[EMPTY_COLUMNS[MANUAL_OVERRIDE_TABLE]]
+    normalized["source"] = normalized["source"].fillna("sherdog")
+    normalized["target_source"] = normalized["target_source"].fillna("ufcstats")
+    normalized["decision"] = normalized["decision"].fillna("").astype(str).str.lower()
+    normalized["source_fighter_id"] = normalized["source_fighter_id"].astype(str)
+    normalized["target_source_fighter_id"] = normalized["target_source_fighter_id"].where(
+        normalized["target_source_fighter_id"].notna(),
+        None,
+    )
+    normalized["created_at_utc"] = normalized["created_at_utc"].fillna(
+        datetime.now(UTC).isoformat()
+    )
+    normalized["updated_at_utc"] = normalized["updated_at_utc"].fillna(
+        datetime.now(UTC).isoformat()
+    )
+    normalized = normalized[
+        normalized["source"].eq("sherdog")
+        & normalized["target_source"].eq("ufcstats")
+        & normalized["decision"].isin({"approved", "rejected", "accepted_unresolved"})
+    ]
+    normalized = normalized[
+        (
+            normalized["decision"].isin({"approved", "rejected"})
+            & normalized["target_source_fighter_id"].notna()
+        )
+        | (
+            normalized["decision"].eq("accepted_unresolved")
+            & normalized["target_source_fighter_id"].isna()
+        )
+    ]
+    if normalized.empty:
+        return _typed_frame([], MANUAL_OVERRIDE_TABLE)
+    return _dedupe(
+        normalized,
+        ["source", "source_fighter_id", "target_source", "target_source_fighter_id"],
+    )

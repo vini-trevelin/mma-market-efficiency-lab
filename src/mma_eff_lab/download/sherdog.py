@@ -15,6 +15,7 @@ from mma_eff_lab.download.ufcstats import ManifestRecord
 from mma_eff_lab.parse.sherdog import (
     BASE_URL,
     SherdogEvent,
+    SherdogFighter,
     parse_event_detail,
     parse_org_page,
 )
@@ -269,6 +270,48 @@ def download_sherdog(
         limit_events=limit_events,
         include_future=include_future,
     )
+
+
+def retry_missing_sherdog_fighters(
+    sleep_seconds: float = 1.0,
+    settings: Settings | None = None,
+) -> dict[str, int]:
+    settings = settings or get_settings()
+    downloader = SherdogDownloader(settings=settings, sleep_seconds=sleep_seconds)
+    ensure_data_dirs(settings)
+    fighters = _missing_fighters_from_cached_events(settings)
+    counts = {"missing_fighters": len(fighters), "downloaded": 0, "download_failures": 0}
+    for fighter in fighters.values():
+        path = downloader._download(
+            fighter.url,
+            "fighters",
+            fighter.source_fighter_id,
+            force=False,
+            required=False,
+        )
+        if path is None:
+            counts["download_failures"] += 1
+        else:
+            counts["downloaded"] += 1
+    downloader.log(f"[sherdog repair] fighter_retry_totals={counts}")
+    return counts
+
+
+def _missing_fighters_from_cached_events(settings: Settings) -> dict[str, SherdogFighter]:
+    fighters: dict[str, SherdogFighter] = {}
+    events_dir = settings.raw_dir / "sherdog" / "events"
+    for path in sorted(events_dir.glob("*.html")):
+        try:
+            parsed = parse_event_detail(path.read_text(encoding="utf-8"), source_event_id=path.stem)
+        except Exception:
+            continue
+        for fighter in parsed.fighters:
+            fighter_path = (
+                settings.raw_dir / "sherdog" / "fighters" / f"{fighter.source_fighter_id}.html"
+            )
+            if not fighter_path.exists():
+                fighters[fighter.source_fighter_id] = fighter
+    return fighters
 
 
 def _default_log(message: str) -> None:

@@ -81,9 +81,10 @@ def fight_detail_html() -> str:
     """
 
 
-def fighter_html(name: str = "Red Fighter") -> str:
+def fighter_html(name: str = "Red Fighter", title_name: str | None = None) -> str:
+    title_name = title_name or name
     return f"""
-    <h2 class="b-content__title">{name}</h2>
+    <h2 class="b-content__title">{title_name}</h2>
     <ul>
       <li>Height: 5' 11"</li>
       <li>Weight: 170 lbs.</li>
@@ -132,3 +133,11 @@ def test_parse_fighter_detail_optional_bio_fields() -> None:
     assert fighter.height_in == 71
     assert fighter.reach_in == 72
     assert str(fighter.dob) == "1990-01-01"
+
+
+def test_parse_fighter_detail_strips_record_suffix_from_title_name() -> None:
+    fighter = parse_fighter_detail(
+        fighter_html(title_name="Red Fighter Record: 8-1-0"),
+        url=f"http://ufcstats.com/fighter-details/{RED_ID}",
+    )
+    assert fighter.full_name == "Red Fighter"

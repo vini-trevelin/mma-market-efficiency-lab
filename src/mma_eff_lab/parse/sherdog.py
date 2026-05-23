@@ -222,11 +222,38 @@ def parse_event_detail(
     participants: list[SherdogFightParticipant] = []
     fighters: dict[str, SherdogFighter] = {}
     quarantine: list[ParseQuarantine] = []
+    fight_rows = _parse_result_table(soup, event)
+    if not fight_rows:
+        main_event = _parse_main_event(soup, event)
+        if main_event is not None:
+            fight_rows = [main_event]
+    fights_by_id: dict[str, SherdogFight] = {}
+    participants_by_fight: dict[str, dict[tuple[str, str, str, str], SherdogFightParticipant]] = {}
 
-    for parsed in [_parse_main_event(soup, event), *_parse_result_table(soup, event)]:
+    for parsed in fight_rows:
         if parsed is None:
             continue
         fight, row_participants, row_fighters = parsed
+        fights_by_id.setdefault(fight.source_fight_id, fight)
+        participant_rows = participants_by_fight.setdefault(fight.source_fight_id, {})
+        for participant in row_participants:
+            participant_rows.setdefault(_participant_key(participant), participant)
+        for fighter in row_fighters:
+            fighters[fighter.source_fighter_id] = fighter
+    for fight_id, fight in fights_by_id.items():
+        row_participants = list(participants_by_fight.get(fight_id, {}).values())
+        if not _valid_participant_shape(row_participants):
+            quarantine.append(
+                ParseQuarantine(
+                    source=SOURCE,
+                    entity_type="fight",
+                    source_entity_id=fight.source_fight_id,
+                    promotion=event.promotion,
+                    reason="invalid_participant_shape",
+                    url=fight.url,
+                )
+            )
+            continue
         if _must_quarantine_one(fight, row_participants):
             quarantine.append(
                 ParseQuarantine(
@@ -241,8 +268,6 @@ def parse_event_detail(
             continue
         fights.append(fight)
         participants.extend(row_participants)
-        for fighter in row_fighters:
-            fighters[fighter.source_fighter_id] = fighter
     return SherdogEventResult(
         event=event,
         fights=fights,
@@ -280,7 +305,7 @@ def parse_all_cached(raw_dir: Path) -> dict[str, list[dict[str, object]]]:
     sherdog_dir = raw_dir / "sherdog"
     events: dict[str, SherdogEvent] = {}
     fights: dict[str, SherdogFight] = {}
-    participants: list[SherdogFightParticipant] = []
+    participants: dict[tuple[str, str, str, str], SherdogFightParticipant] = {}
     fighters: dict[str, SherdogFighter] = {}
     quarantine: list[ParseQuarantine] = []
     for path in sorted((sherdog_dir / "events").glob("*.html")):
@@ -290,7 +315,8 @@ def parse_all_cached(raw_dir: Path) -> dict[str, list[dict[str, object]]]:
         events[result.event.source_event_id] = result.event
         for fight in result.fights:
             fights[fight.source_fight_id] = fight
-        participants.extend(result.participants)
+        for participant in result.participants:
+            participants.setdefault(_participant_key(participant), participant)
         for fighter in result.fighters:
             fighters[fighter.source_fighter_id] = fighter
         quarantine.extend(result.quarantine)
@@ -304,7 +330,7 @@ def parse_all_cached(raw_dir: Path) -> dict[str, list[dict[str, object]]]:
     return {
         "source_events": to_rows(list(events.values())),
         "source_fights": to_rows(list(fights.values())),
-        "source_fight_participants": to_rows(participants),
+        "source_fight_participants": to_rows(list(participants.values())),
         "source_fighters": to_rows(list(fighters.values())),
         "parse_quarantine": to_rows(quarantine),
     }
@@ -497,6 +523,24 @@ def _must_quarantine_one(
         ]
     ).lower()
     return any(token in text for token in NON_MMA_TOKENS)
+
+
+def _participant_key(
+    participant: SherdogFightParticipant,
+) -> tuple[str, str, str, str]:
+    return (
+        participant.source,
+        participant.source_fight_id,
+        participant.source_fighter_id,
+        participant.corner,
+    )
+
+
+def _valid_participant_shape(participants: list[SherdogFightParticipant]) -> bool:
+    if len(participants) != 2:
+        return False
+    corners = {participant.corner for participant in participants}
+    return corners == {"red", "blue"}
 
 
 def _strip_label(value: str, label: str) -> str:

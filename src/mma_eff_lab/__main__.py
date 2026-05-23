@@ -4,7 +4,11 @@ import argparse
 import json
 
 from mma_eff_lab.audit.warehouse import validate_warehouse
-from mma_eff_lab.download.sherdog import PROMOTION_SETS, download_sherdog
+from mma_eff_lab.download.sherdog import (
+    PROMOTION_SETS,
+    download_sherdog,
+    retry_missing_sherdog_fighters,
+)
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
 from mma_eff_lab.reports.static import make_reports
@@ -34,8 +38,10 @@ def main() -> None:
     subparsers.add_parser("build-features")
     subparsers.add_parser("make-reports")
     subparsers.add_parser("validate-warehouse")
+    subparsers.add_parser("apply-identity-overrides")
     subparsers.add_parser("full-pipeline")
     subparsers.add_parser("full-pipeline-sherdog-major")
+    subparsers.add_parser("repair-sherdog-major")
 
     args = parser.parse_args()
     if args.command == "download-ufcstats":
@@ -65,6 +71,12 @@ def main() -> None:
         result = make_reports()
     elif args.command == "validate-warehouse":
         result = validate_warehouse()
+    elif args.command == "apply-identity-overrides":
+        result = {
+            "warehouse": build_warehouse(),
+            "features": build_pit_features(),
+            "audit": validate_warehouse(),
+        }
     elif args.command == "full-pipeline":
         result = {
             "download": download_ufcstats(),
@@ -83,6 +95,14 @@ def main() -> None:
             "features": build_pit_features(),
             "audit": validate_warehouse(),
             "reports": make_reports(),
+        }
+    elif args.command == "repair-sherdog-major":
+        result = {
+            "retry_missing_fighters": retry_missing_sherdog_fighters(),
+            "parse_sherdog": parse_cached_sherdog(),
+            "warehouse": build_warehouse(),
+            "features": build_pit_features(),
+            "audit": validate_warehouse(),
         }
     else:
         raise SystemExit(f"Unknown command: {args.command}")

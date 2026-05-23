@@ -239,6 +239,7 @@ def parse_fighter_detail(html: str, url: str) -> Fighter:
     last = clean_text(soup.select_one(".b-content__title-highlight + .b-content__title-highlight"))
     full_name = clean_text(soup.select_one(".b-content__title") or soup.select_one("h1, h2"))
     full_name = re.sub(r"\s+", " ", full_name.replace("FIGHTER DETAILS", "")).strip()
+    full_name = _strip_record_suffix(full_name)
     if first and last:
         full_name = f"{first} {last}"
     if not full_name:
@@ -481,6 +482,10 @@ def _parse_label_values(soup: BeautifulSoup) -> dict[str, str]:
 def _none_if_blank(value: str | None) -> str | None:
     value = clean_text(value)
     return None if not value or value == "--" else value
+
+
+def _strip_record_suffix(value: str) -> str:
+    return clean_text(re.sub(r"\s+Record:\s+.+$", "", clean_text(value), flags=re.I))
 
 
 def _parse_optional_date(value: str) -> date | None:

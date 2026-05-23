@@ -28,7 +28,53 @@ def sherdog_event_html(
     blue_id: str = SHERDOG_BLUE_ID,
     promotion: str = "Bellator MMA",
     weight_class: str = "Middleweight",
+    include_result_table: bool = False,
+    duplicate_match_row: bool = False,
 ) -> str:
+    result_table = ""
+    if include_result_table:
+        duplicate_row = (
+            """
+            <tr>
+              <td>1</td>
+              <td>
+                <a href="/fighter/Alt-Red-7001">Alt Red</a>
+                <span class="final_result win">win</span>
+              </td>
+              <td><span class="weight_class">Middleweight</span></td>
+              <td>
+                <a href="/fighter/Alt-Blue-7002">Alt Blue</a>
+                <span class="final_result loss">loss</span>
+              </td>
+              <td><b>Decision (Split)</b><span class="sub_line">John McCarthy</span></td>
+              <td>3</td>
+              <td>5:00</td>
+            </tr>
+            """
+            if duplicate_match_row
+            else ""
+        )
+        result_table = f"""
+        <table class="new_table result">
+          <tr class="table_head"><td>Match</td></tr>
+          <tr>
+            <td>1</td>
+            <td>
+              <a href="/fighter/Red-Fighter-{red_id}">Red Fighter</a>
+              <span class="final_result win">win</span>
+            </td>
+            <td><span class="weight_class">{weight_class}</span></td>
+            <td>
+              <a href="/fighter/Blue-Fighter-{blue_id}">Blue Fighter</a>
+              <span class="final_result loss">loss</span>
+            </td>
+            <td><b>Decision (Unanimous)</b><span class="sub_line">John McCarthy</span></td>
+            <td>3</td>
+            <td>5:00</td>
+          </tr>
+          {duplicate_row}
+        </table>
+        """
     return f"""
     <div class="event_detail">
       <h1>{promotion} - Test Event</h1>
@@ -56,6 +102,7 @@ def sherdog_event_html(
         <td><em>Time</em><br>5:00</td>
       </tr>
     </table>
+    {result_table}
     """
 
 
@@ -95,6 +142,28 @@ def test_parse_sherdog_event_extracts_main_card_result() -> None:
     assert parsed.fights[0].source_fight_id == f"{SHERDOG_EVENT_ID}:1"
     assert parsed.participants[0].winner_flag is True
     assert parsed.participants[1].outcome == "L"
+
+
+def test_parse_sherdog_event_prefers_results_table_without_duplication() -> None:
+    parsed = parse_event_detail(
+        sherdog_event_html(include_result_table=True),
+        source_event_id=SHERDOG_EVENT_ID,
+        url=f"https://www.sherdog.com/events/Bellator-MMA-Bellator-116-{SHERDOG_EVENT_ID}",
+    )
+    assert len(parsed.fights) == 1
+    assert len(parsed.participants) == 2
+    assert parsed.fights[0].source_fight_id == f"{SHERDOG_EVENT_ID}:1"
+
+
+def test_parse_sherdog_event_quarantines_invalid_participant_shape() -> None:
+    parsed = parse_event_detail(
+        sherdog_event_html(include_result_table=True, duplicate_match_row=True),
+        source_event_id=SHERDOG_EVENT_ID,
+        url=f"https://www.sherdog.com/events/Bellator-MMA-Bellator-116-{SHERDOG_EVENT_ID}",
+    )
+    assert parsed.fights == []
+    assert parsed.participants == []
+    assert parsed.quarantine[0].reason == "invalid_participant_shape"
 
 
 def test_parse_sherdog_event_quarantines_non_mma_one_bout() -> None:
