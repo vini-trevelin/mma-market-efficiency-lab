@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 from mma_eff_lab.audit.warehouse import validate_warehouse
 from mma_eff_lab.download.sherdog import (
@@ -11,6 +12,8 @@ from mma_eff_lab.download.sherdog import (
 )
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
+from mma_eff_lab.models.dataset import write_model_dataset
+from mma_eff_lab.models.train import train_xgboost_model
 from mma_eff_lab.reports.static import make_reports
 from mma_eff_lab.warehouse.build import build_warehouse, parse_cached_sherdog, parse_cached_ufcstats
 
@@ -36,6 +39,13 @@ def main() -> None:
     subparsers.add_parser("parse-sherdog")
     subparsers.add_parser("build-warehouse")
     subparsers.add_parser("build-features")
+    model_dataset = subparsers.add_parser("build-model-dataset")
+    model_dataset.add_argument("--output-path")
+    train_model = subparsers.add_parser("train-xgboost-model")
+    train_model.add_argument("--output-dir")
+    train_model.add_argument("--n-estimators", type=int, default=200)
+    train_model.add_argument("--max-depth", type=int, default=3)
+    train_model.add_argument("--learning-rate", type=float, default=0.05)
     subparsers.add_parser("make-reports")
     subparsers.add_parser("validate-warehouse")
     subparsers.add_parser("apply-identity-overrides")
@@ -67,6 +77,15 @@ def main() -> None:
         result = build_warehouse()
     elif args.command == "build-features":
         result = build_pit_features()
+    elif args.command == "build-model-dataset":
+        result = write_model_dataset(Path(args.output_path) if args.output_path else None)
+    elif args.command == "train-xgboost-model":
+        result = train_xgboost_model(
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+            n_estimators=args.n_estimators,
+            max_depth=args.max_depth,
+            learning_rate=args.learning_rate,
+        )
     elif args.command == "make-reports":
         result = make_reports()
     elif args.command == "validate-warehouse":

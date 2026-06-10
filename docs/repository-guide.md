@@ -20,6 +20,9 @@ tests and warehouse checks.
 - `docs/sources.md`: source-of-truth notes for UFCStats, Sherdog, deferred
   sources, and odds scope. Read it before changing download, parse, source-link,
   or ingestion behavior.
+- `docs/model-research.md`: modeling research note for fight outcome prediction,
+  including current feature surface, external references, recommended baseline
+  path, validation rules, and open modeling questions.
 - `tasks/todo.md`: active project log. New work should get a short plan,
   checkable progress items, and a review/results section.
 - `README.md`: short operator-facing summary and the primary update command flow.
@@ -122,7 +125,15 @@ uv run python -m mma_eff_lab parse-ufcstats
 uv run python -m mma_eff_lab parse-sherdog
 uv run python -m mma_eff_lab build-warehouse
 uv run python -m mma_eff_lab build-features
+uv run python -m mma_eff_lab build-model-dataset
+uv run python -m mma_eff_lab train-xgboost-model
 uv run python -m mma_eff_lab validate-warehouse
+```
+
+On macOS, XGBoost needs the OpenMP runtime before training:
+
+```bash
+brew install libomp
 ```
 
 Use this order intentionally:
@@ -154,6 +165,12 @@ That command runs warehouse rebuild, feature rebuild, and audit rebuild in one p
 - `src/mma_eff_lab/warehouse/build.py`: convert parsed parquet inputs into
   canonical warehouse tables and identity-link tables.
 - `src/mma_eff_lab/features/pit.py`: rebuild point-in-time fighter and matchup features.
+- `src/mma_eff_lab/models/dataset.py`: build deterministic, binary fight outcome
+  model datasets from PIT matchup features and labels.
+- `src/mma_eff_lab/models/train.py`: train the XGBoost V1 fight outcome model and
+  write metrics/model metadata artifacts.
+- `src/mma_eff_lab/models/predict.py`: load model artifacts and return complement
+  win probabilities for an ordered fighter pair.
 - `src/mma_eff_lab/audit/warehouse.py`: rebuild audit summary, checks, coverage,
   missingness, identity, and PIT analysis tables.
 

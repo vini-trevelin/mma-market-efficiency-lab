@@ -1,5 +1,84 @@
 # Task Log
 
+# XGBoost Fight Outcome Model V1
+
+## Plan
+
+- [x] Add model dependencies for real XGBoost training and metrics.
+- [x] Implement deterministic leak-resistant model dataset builder.
+- [x] Implement XGBoost training, temporal split metrics, and artifact writing.
+- [x] Implement prediction helper with complement probability contract.
+- [x] Add focused tests for dataset labels, leakage guardrails, temporal split, and probability contract.
+- [x] Run relevant tests and record verification.
+
+## Review / Results
+
+- Added real `xgboost` and `scikit-learn` dependencies.
+- Added model commands:
+  - `build-model-dataset`
+  - `train-xgboost-model`
+- Added model modules:
+  - deterministic binary dataset builder from `pit_matchup_features`;
+  - XGBoost trainer using `binary:logistic`;
+  - temporal date-based train/validation/test split;
+  - metrics for log loss, Brier score, AUC, accuracy, and source-stratified test metrics;
+  - prediction helper returning `P(fighter_a wins)` and `P(fighter_b wins) = 1 - P(fighter_a wins)`.
+- Live dataset smoke:
+  - input rows: `17,487`;
+  - binary training rows: `17,196`;
+  - excluded draw/no-contest rows: `291`;
+  - label balance: `8,238` fighter A wins, `8,958` fighter B wins.
+- Verification:
+  - `uv run pytest tests/test_models.py` passed (`5` tests).
+  - `uv run ruff check src tests` passed.
+  - `uv run pytest` passed (`42` tests).
+- Environment note:
+  - XGBoost import is installed but local macOS runtime is missing `libomp.dylib`.
+  - Actual training command exits with a clear message to run `brew install libomp`.
+
+# Fight Outcome Model Research V1
+
+## Plan
+
+- [x] Confirm the research branch name is `research-fight-model`.
+- [x] Inspect current PIT feature tables and label/corner behavior.
+- [x] Review external MMA outcome-prediction and paired-comparison sources.
+- [x] Write a research note with recommended modeling path, evaluation rules, and risks.
+- [x] Record immediate implementation questions before modeling work starts.
+- [x] Clarify probability-complement contract and SOTA model candidates.
+
+## Review / Results
+
+- Branch is `research-fight-model`.
+- Current modeling table size:
+  - `pit_matchup_features`: `17,487` fights.
+  - Latest source event date is `2026-06-06` for both UFCStats and Sherdog.
+- Current PIT feature coverage:
+  - Sherdog fighter rows: `17,548`; prior-history coverage `65.5%`; age/height `88.3%`; reach `14.8%`; detailed stat history `9.7%`.
+  - UFCStats fighter rows: `17,426`; prior-history coverage `86.9%`; age `99.2%`; height `99.9%`; reach `92.4%`; detailed stat history `84.2%`.
+- Critical label/corner risk:
+  - Sherdog red corner win rate is `98.45%`, because the source/parser side is effectively winner-first.
+  - UFCStats red corner win rate is `63.03%`, consistent with known red-corner bias and/or assignment effects.
+  - First model dataset must randomize or symmetrize fighter order and must not treat `red` as a causal feature.
+- Research note created in `docs/model-research.md`.
+- Recommended first build:
+  - create a model dataset builder from `pit_matchup_features` plus labels;
+  - exclude draw/no-contest rows for MVP binary prediction;
+  - emit side-swapped or randomized rows;
+  - start with regularized logistic regression and rating baselines;
+  - compare against calibrated gradient boosting only after leakage checks pass.
+- Probability contract:
+  - produce one ordered-pair scalar `P(fighter_a wins)`;
+  - set `P(fighter_b wins) = 1 - P(fighter_a wins)`;
+  - enforce or test swapped-input invariance before trusting probabilities.
+- SOTA scan:
+  - strongest MMA-specific published direction is Bayesian skill estimation plus
+    Markov-chain fight simulation;
+  - strongest practical MVP path is dynamic Bradley-Terry/Elo-style rating
+    features plus calibrated logistic regression;
+  - tabular ensembles/XGBoost/style clusters are candidates after the leak-free
+    baseline is measured.
+
 # Live Data Refresh and Main Commit
 
 ## Plan

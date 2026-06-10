@@ -22,6 +22,19 @@ uv run python -m mma_eff_lab build-features
 uv run python -m mma_eff_lab validate-warehouse
 ```
 
+Build the leak-resistant binary model dataset and train the XGBoost V1 model:
+
+```bash
+uv run python -m mma_eff_lab build-model-dataset
+uv run python -m mma_eff_lab train-xgboost-model
+```
+
+On macOS, XGBoost requires OpenMP at runtime:
+
+```bash
+brew install libomp
+```
+
 One-command local identity reapply after review changes:
 
 ```bash
@@ -37,6 +50,10 @@ uv run python -m mma_eff_lab apply-identity-overrides
 - `parse-sherdog`: converts cached Sherdog HTML into parsed parquet tables.
 - `build-warehouse`: builds canonical warehouse tables in `data/warehouse/mma.duckdb`.
 - `build-features`: rebuilds point-in-time fighter and matchup features.
+- `build-model-dataset`: writes a binary, deterministic-orientation fight outcome
+  dataset for model training.
+- `train-xgboost-model`: trains the XGBoost fight outcome model and writes model,
+  metadata, and metrics artifacts under `data/models/`.
 - `validate-warehouse`: rebuilds derived audit and analysis tables.
 - `apply-identity-overrides`: reruns warehouse, features, and audit with current
   manual identity review decisions.

@@ -181,7 +181,7 @@ class UFCStatsDownloader:
         difficulty = int(difficulty_match.group(1))
         target = "0" * difficulty
         n = 0
-        while not hashlib.sha256(f"{nonce}:{n}".encode("utf-8")).hexdigest().startswith(target):
+        while not hashlib.sha256(f"{nonce}:{n}".encode()).hexdigest().startswith(target):
             n += 1
         verify_url = urljoin(url, "/__c")
         verify = self.session.post(
