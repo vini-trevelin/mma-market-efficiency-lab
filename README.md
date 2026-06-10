@@ -1,1 +1,52 @@
 # MMA Market Efficiency Lab
+
+Local-first MMA historical data and feature pipeline backed by cached UFCStats
+and Sherdog HTML plus a DuckDB warehouse.
+
+## Core Update Flow
+
+Refresh raw source cache:
+
+```bash
+uv run python -m mma_eff_lab download-ufcstats
+uv run python -m mma_eff_lab download-sherdog --promotion-set major
+```
+
+Rebuild parsed outputs, warehouse, features, and audit:
+
+```bash
+uv run python -m mma_eff_lab parse-ufcstats
+uv run python -m mma_eff_lab parse-sherdog
+uv run python -m mma_eff_lab build-warehouse
+uv run python -m mma_eff_lab build-features
+uv run python -m mma_eff_lab validate-warehouse
+```
+
+One-command local identity reapply after review changes:
+
+```bash
+uv run python -m mma_eff_lab apply-identity-overrides
+```
+
+## What Each Step Does
+
+- `download-ufcstats`: updates raw UFCStats event, fight, and fighter HTML cache.
+- `download-sherdog --promotion-set major`: updates raw Sherdog major-promotion
+  event and fighter HTML cache.
+- `parse-ufcstats`: converts cached UFCStats HTML into parsed parquet tables.
+- `parse-sherdog`: converts cached Sherdog HTML into parsed parquet tables.
+- `build-warehouse`: builds canonical warehouse tables in `data/warehouse/mma.duckdb`.
+- `build-features`: rebuilds point-in-time fighter and matchup features.
+- `validate-warehouse`: rebuilds derived audit and analysis tables.
+- `apply-identity-overrides`: reruns warehouse, features, and audit with current
+  manual identity review decisions.
+
+## Current Source Notes
+
+- UFCStats direct requests currently use a built-in proof-of-work workaround in
+  the downloader to pass the site browser-check page and continue with normal
+  `requests` fetches.
+- Sherdog major-promotion pages currently refresh successfully through normal
+  `requests` from this environment.
+- Raw HTML cache lives under `data/raw/`.
+- Parsed parquet outputs and the DuckDB warehouse live under `data/warehouse/`.

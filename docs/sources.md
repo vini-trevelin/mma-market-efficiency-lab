@@ -12,6 +12,11 @@ Note: local requests to UFCStats HTTPS currently refuse connections in this envi
 while HTTP returns `200 OK`. The downloader therefore uses HTTP and normalizes UFCStats
 links to that host.
 
+Current request behavior note: UFCStats may return a JavaScript browser-check page
+instead of real HTML to plain clients. The downloader contains a request-side
+proof-of-work workaround that posts to `/__c`, preserves the returned session
+cookie, and retries the original page fetch.
+
 ## Supplemental Non-UFC Source
 
 Sherdog is a supplemental source for major non-UFC event/fight/result history. It is
@@ -37,6 +42,11 @@ Rules:
 - Fighter profile fight-history tables are not parsed as event seeds.
 - ONE Championship rows with clear non-MMA discipline tokens are quarantined.
 - Identity links are conservative: normalized full name plus exact DOB only.
+
+Operational note: Sherdog access can change with VPN/IP path. When request access
+works, the normal downloader can sweep organization, event, and fighter pages.
+When it fails, the block tends to happen at live organization or event detail
+requests rather than in the parser.
 
 ## Deferred Sources
 

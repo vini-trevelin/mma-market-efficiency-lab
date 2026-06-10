@@ -22,7 +22,7 @@ tests and warehouse checks.
   or ingestion behavior.
 - `tasks/todo.md`: active project log. New work should get a short plan,
   checkable progress items, and a review/results section.
-- `README.md`: minimal project title only at the moment.
+- `README.md`: short operator-facing summary and the primary update command flow.
 
 ## Current Project Shape
 
@@ -111,6 +111,52 @@ uv run python -m mma_eff_lab download-ufcstats
 uv run python -m mma_eff_lab download-sherdog --promotion-set major
 ```
 
+## Update Playbook
+
+Normal refresh from live sources:
+
+```bash
+uv run python -m mma_eff_lab download-ufcstats
+uv run python -m mma_eff_lab download-sherdog --promotion-set major
+uv run python -m mma_eff_lab parse-ufcstats
+uv run python -m mma_eff_lab parse-sherdog
+uv run python -m mma_eff_lab build-warehouse
+uv run python -m mma_eff_lab build-features
+uv run python -m mma_eff_lab validate-warehouse
+```
+
+Use this order intentionally:
+
+1. Downloaders update raw HTML cache only.
+2. Parse steps regenerate parquet staging tables from raw cache.
+3. `build-warehouse` rewrites canonical DuckDB tables.
+4. `build-features` rewrites PIT feature tables from the canonical warehouse.
+5. `validate-warehouse` rewrites audit and analysis tables.
+
+If manual identity decisions changed, use:
+
+```bash
+uv run python -m mma_eff_lab apply-identity-overrides
+```
+
+That command runs warehouse rebuild, feature rebuild, and audit rebuild in one pass.
+
+## Script Responsibilities
+
+- `src/mma_eff_lab/download/ufcstats.py`: request-based UFCStats cache refresh,
+  including the current browser-check proof-of-work workaround.
+- `src/mma_eff_lab/download/sherdog.py`: Sherdog organization, event, and fighter
+  cache refresh for the configured promotion sets.
+- `src/mma_eff_lab/parse/ufcstats.py`: parse cached UFCStats HTML into event,
+  fight, participant, fighter, and stat rows.
+- `src/mma_eff_lab/parse/sherdog.py`: parse cached Sherdog HTML into source-aware
+  event, fight, participant, fighter, and quarantine rows.
+- `src/mma_eff_lab/warehouse/build.py`: convert parsed parquet inputs into
+  canonical warehouse tables and identity-link tables.
+- `src/mma_eff_lab/features/pit.py`: rebuild point-in-time fighter and matchup features.
+- `src/mma_eff_lab/audit/warehouse.py`: rebuild audit summary, checks, coverage,
+  missingness, identity, and PIT analysis tables.
+
 ## Data and Source Rules
 
 UFCStats is canonical for UFC events, fights, fighter bios, and detailed stats.
@@ -118,6 +164,16 @@ Sherdog is supplemental for major non-UFC event and result history.
 
 Raw HTML is cached before parsing. Missing-only download is the default. Do not
 replace cached data or force downloads unless the task requires it.
+
+Current access notes:
+
+- UFCStats may serve a JavaScript browser-check page to plain requests. The
+  downloader now solves that proof-of-work challenge within the request session
+  and retries the original URL.
+- Sherdog access behavior can vary with network path and IP reputation. When it
+  works, normal `requests` refresh the cache directly. When it does not, the
+  failure usually appears as blocked organization or event pages rather than a
+  parser error.
 
 Identity linking is intentionally conservative:
 

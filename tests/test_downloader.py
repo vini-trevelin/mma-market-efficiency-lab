@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import replace
 from pathlib import Path
 
@@ -40,11 +41,22 @@ class FakeSession:
     def __init__(self, responses: dict[str, str]) -> None:
         self.responses = responses
         self.calls: list[str] = []
+        self.posts: list[tuple[str, dict[str, str]]] = []
         self.headers: dict[str, str] = {}
+        self.challenge_verified = False
 
     def get(self, url: str, timeout: float) -> FakeResponse:
         self.calls.append(url)
+        if self.challenge_verified and url in self.responses:
+            solved_key = f"{url}#solved"
+            if solved_key in self.responses:
+                return FakeResponse(self.responses[solved_key])
         return FakeResponse(self.responses[url])
+
+    def post(self, url: str, data: dict[str, str], timeout: float) -> FakeResponse:
+        self.posts.append((url, data))
+        self.challenge_verified = True
+        return FakeResponse("", status_code=204)
 
 
 def test_downloader_caches_and_skips_existing_files(tmp_path: Path) -> None:
@@ -89,3 +101,32 @@ def test_sherdog_downloader_caches_and_skips_existing_files(tmp_path: Path) -> N
     assert first_call_count == 4
     assert len(session.calls) == first_call_count
     assert (settings.raw_dir / "sherdog" / "events" / f"{SHERDOG_EVENT_ID}.html").exists()
+
+
+def test_ufcstats_downloader_solves_browser_check(tmp_path: Path) -> None:
+    settings = replace(get_settings(tmp_path), repo_root=tmp_path)
+    gate_html = """
+<!doctype html><html><body><p>Checking your browser...</p><script>
+var nonce="abc123";
+var target=new Array(2+1).join('0');
+var xhr=new XMLHttpRequest();
+xhr.open('POST',"/__c",true);
+</script></body></html>
+"""
+    responses = {
+        "http://ufcstats.com/statistics/events/completed?page=all": gate_html,
+        "http://ufcstats.com/statistics/events/completed?page=all#solved": event_index_html(),
+        f"http://ufcstats.com/event-details/{EVENT_ID_1}": event_detail_html(),
+        f"http://ufcstats.com/fight-details/{FIGHT_ID_1}": fight_detail_html(),
+        f"http://ufcstats.com/fighter-details/{RED_ID}": fighter_html("Red Fighter"),
+        f"http://ufcstats.com/fighter-details/{BLUE_ID}": fighter_html("Blue Fighter"),
+    }
+    session = FakeSession(responses)
+    downloader = UFCStatsDownloader(settings=settings, session=session, sleep_seconds=0)
+    counts = downloader.download_all()
+    assert counts["events"] == 1
+    assert len(session.posts) == 1
+    post_url, post_data = session.posts[0]
+    assert post_url == "http://ufcstats.com/__c"
+    assert post_data["nonce"] == "abc123"
+    assert hashlib.sha256(f"abc123:{post_data['n']}".encode()).hexdigest().startswith("00")

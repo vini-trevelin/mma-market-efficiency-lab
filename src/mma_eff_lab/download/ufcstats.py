@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from urllib.parse import urljoin
 
 import requests
 
@@ -162,11 +164,46 @@ class UFCStatsDownloader:
             try:
                 response = self.session.get(url, timeout=self.timeout_seconds)
                 response.raise_for_status()
+                if self._looks_like_js_gate(response.text):
+                    response = self._solve_js_gate(url, response.text)
                 return response
             except requests.RequestException as exc:
                 last_error = exc
                 time.sleep(self.sleep_seconds)
         raise RuntimeError(f"Failed to download {url}: {last_error}") from last_error
+
+    def _solve_js_gate(self, url: str, html: str) -> requests.Response:
+        nonce_match = re.search(r'var nonce="([0-9a-f]+)"', html)
+        difficulty_match = re.search(r"new Array\((\d+)\+1\)\.join\('0'\)", html)
+        if nonce_match is None or difficulty_match is None:
+            raise RuntimeError(f"Encountered unsupported UFCStats browser check for {url}")
+        nonce = nonce_match.group(1)
+        difficulty = int(difficulty_match.group(1))
+        target = "0" * difficulty
+        n = 0
+        while not hashlib.sha256(f"{nonce}:{n}".encode("utf-8")).hexdigest().startswith(target):
+            n += 1
+        verify_url = urljoin(url, "/__c")
+        verify = self.session.post(
+            verify_url,
+            data={"nonce": nonce, "n": str(n)},
+            timeout=self.timeout_seconds,
+        )
+        verify.raise_for_status()
+        solved = self.session.get(url, timeout=self.timeout_seconds)
+        solved.raise_for_status()
+        if self._looks_like_js_gate(solved.text):
+            raise RuntimeError(f"UFCStats browser check did not clear for {url}")
+        self.log(f"[challenge-solved] nonce={nonce} difficulty={difficulty} n={n} url={url}")
+        return solved
+
+    @staticmethod
+    def _looks_like_js_gate(html: str) -> bool:
+        return (
+            "Checking your browser" in html
+            and 'xhr.open(\'POST\',"/__c",true);' in html
+            and 'var nonce="' in html
+        )
 
     def _path_for(self, entity_type: str, entity_id: str) -> Path:
         if entity_type == "events_index":
