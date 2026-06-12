@@ -1,5 +1,79 @@
 # Task Log
 
+# Rating Features for Fight Outcome Model
+
+## Plan
+
+- [x] Add point-in-time dynamic rating and recent-form features to PIT fighter features.
+- [x] Ensure same-date fights do not influence each other through ratings.
+- [x] Let the existing deterministic model dataset include the new delta features.
+- [x] Add focused tests for rating feature chronology and model feature propagation.
+- [x] Rebuild features/model artifacts and compare metrics against the current baseline.
+- [x] Add and run the three-model benchmark requested by the user.
+- [x] Add and run model/data quality checks for leakage, chronology, and source bias risk.
+
+## Review / Results
+
+- Added point-in-time Elo-style features:
+  - `pre_fight_elo`;
+  - `elo_expected_win_prob`;
+  - `elo_uncertainty`;
+  - `recent_3_win_rate`;
+  - `recent_5_win_rate`.
+- Same-date fights are rated from the pre-date rating state, so earlier fights on
+  the same event date do not leak into later same-date fights.
+- Rebuilt features:
+  - `pit_fighter_features`: `35,676`;
+  - `pit_matchup_features`: `17,838`.
+- Rebuilt model dataset:
+  - training rows: `17,541`;
+  - excluded draw/no-contest rows: `297`;
+  - feature columns: `24`.
+- XGBoost default temporal split after rating features:
+  - validation log loss: `0.6500`; validation AUC: `0.6615`; validation accuracy: `62.84%`;
+  - test log loss: `0.6447`; test AUC: `0.6737`; test accuracy: `63.16%`;
+  - UFCStats test AUC: `0.6898`;
+  - Sherdog test AUC: `0.6543`.
+- Expanding-window walk-forward backtest, 8 folds / `8,608` out-of-sample rows:
+  - without rating features: accuracy `62.08%`, log loss `0.6534`, AUC `0.6573`;
+  - with rating features: accuracy `62.71%`, log loss `0.6497`, AUC `0.6640`.
+- Added `benchmark-fight-models` command and wrote benchmark results to
+  `data/models/fight_outcome_benchmarks.json`.
+- Added `validate-model-quality` command and wrote quality results to
+  `data/models/model_quality_report.json`.
+- Three-model benchmark, temporal test split:
+  - baseline XGBoost: accuracy `63.55%`, log loss `0.6512`, AUC `0.6632`;
+  - XGBoost + rating features: accuracy `63.16%`, log loss `0.6447`, AUC `0.6737`;
+  - CatBoost + rating features: accuracy `63.29%`, log loss `0.6478`, AUC `0.6694`.
+- Three-model benchmark, expanding-window walk-forward:
+  - baseline XGBoost: accuracy `62.08%`, log loss `0.6534`, AUC `0.6573`;
+  - XGBoost + rating features: accuracy `62.71%`, log loss `0.6497`, AUC `0.6640`;
+  - CatBoost + rating features: accuracy `62.08%`, log loss `0.6513`, AUC `0.6601`.
+- Model-quality audit:
+  - `8` pass, `1` warning, `0` fail;
+  - no forbidden red/blue/corner/winner/outcome/source/promotion training features;
+  - deterministic fighter orientation has `0` violations;
+  - temporal split has no date overlap;
+  - walk-forward folds are expanding and chronological;
+  - PIT prior counts have `0` current/same-date leakage mismatches;
+  - source performance gap check passed for the primary XGBoost + rating model;
+  - remaining warning is high missingness in detailed striking/grappling deltas.
+- Top XGBoost gain features after retrain:
+  - `delta_elo_expected_win_prob`;
+  - `delta_pre_fight_elo`;
+  - `delta_prior_wins`;
+  - `delta_age_years`;
+  - `delta_reach_in`.
+- Verification:
+  - `uv run pytest tests/test_warehouse_and_pit.py::test_pit_features_exclude_current_and_same_date_fights tests/test_models.py` passed.
+  - `uv run ruff check src/mma_eff_lab/features/pit.py tests/test_warehouse_and_pit.py tests/test_models.py` passed.
+  - `uv run pytest` passed (`52` tests).
+  - `uv run ruff check src tests` passed.
+  - `uv run python -m mma_eff_lab validate-warehouse` passed with known warnings only:
+    quarantined rows and unresolved Sherdog identities.
+  - `uv run python -m mma_eff_lab benchmark-fight-models` passed.
+  - `uv run python -m mma_eff_lab validate-model-quality` passed with `0` failures.
+
 # Unified Fighter Linkage and DWCS Coverage
 
 ## Plan

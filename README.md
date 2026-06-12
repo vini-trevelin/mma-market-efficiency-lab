@@ -38,6 +38,13 @@ uv run python -m mma_eff_lab build-model-dataset
 uv run python -m mma_eff_lab train-xgboost-model
 ```
 
+Run the fight-outcome model benchmark suite:
+
+```bash
+uv run python -m mma_eff_lab benchmark-fight-models
+uv run python -m mma_eff_lab validate-model-quality
+```
+
 On macOS, XGBoost requires OpenMP at runtime:
 
 ```bash
@@ -66,6 +73,11 @@ uv run python -m mma_eff_lab apply-identity-overrides
   dataset for model training.
 - `train-xgboost-model`: trains the XGBoost fight outcome model and writes model,
   metadata, and metrics artifacts under `data/models/`.
+- `benchmark-fight-models`: compares baseline XGBoost, XGBoost with rating
+  features, and CatBoost with rating features using temporal split and
+  walk-forward evaluation.
+- `validate-model-quality`: writes leakage, temporal-split, source-gap, label
+  balance, and missingness checks for model/data quality.
 - `validate-warehouse`: rebuilds derived audit and analysis tables.
 - `apply-identity-overrides`: reruns warehouse, features, and audit with current
   manual identity review decisions.

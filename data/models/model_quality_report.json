@@ -1,0 +1,163 @@
+{
+  "created_at_utc": "2026-06-12T04:51:25.308196+00:00",
+  "summary": {
+    "pass": 8,
+    "warn": 1,
+    "fail": 0
+  },
+  "checks": [
+    {
+      "name": "no_forbidden_training_features",
+      "status": "pass",
+      "details": {
+        "forbidden_tokens": [
+          "red_",
+          "blue_",
+          "corner",
+          "winner",
+          "outcome",
+          "source",
+          "promotion"
+        ],
+        "forbidden_features": []
+      }
+    },
+    {
+      "name": "training_columns_keep_identifiers_out_of_feature_matrix",
+      "status": "pass",
+      "details": {
+        "identifier_columns": [
+          "fight_id",
+          "event_id",
+          "event_date",
+          "source",
+          "promotion",
+          "fighter_a_id",
+          "fighter_b_id",
+          "fighter_a_name",
+          "fighter_b_name",
+          "fighter_a_won"
+        ],
+        "feature_columns": [
+          "delta_prior_fights",
+          "delta_prior_wins",
+          "delta_prior_losses",
+          "delta_prior_draws",
+          "delta_prior_nc",
+          "delta_days_since_last_fight",
+          "delta_age_years",
+          "delta_height_in",
+          "delta_reach_in",
+          "delta_wins_by_ko_tko",
+          "delta_wins_by_sub",
+          "delta_wins_by_dec",
+          "delta_avg_fight_time_sec",
+          "delta_avg_sig_str_landed",
+          "delta_avg_sig_str_absorbed",
+          "delta_avg_td_landed",
+          "delta_avg_td_attempted",
+          "delta_avg_sub_attempts",
+          "delta_avg_ctrl_sec",
+          "delta_pre_fight_elo",
+          "delta_elo_expected_win_prob",
+          "delta_elo_uncertainty",
+          "delta_recent_3_win_rate",
+          "delta_recent_5_win_rate"
+        ]
+      }
+    },
+    {
+      "name": "deterministic_orientation_without_extreme_id_label_bias",
+      "status": "pass",
+      "details": {
+        "orientation_violations": 0,
+        "fighter_a_win_rate": 0.47334815574938716
+      }
+    },
+    {
+      "name": "binary_label_balance",
+      "status": "pass",
+      "details": {
+        "fighter_a_wins": 8303,
+        "fighter_b_wins": 9238,
+        "fighter_a_win_rate": 0.47334815574938716,
+        "excluded_draw_nc": 297,
+        "excluded_invalid_label": 0
+      }
+    },
+    {
+      "name": "temporal_split_has_no_date_overlap",
+      "status": "pass",
+      "details": {
+        "train_end_date": "2021-09-21",
+        "validation_end_date": "2024-02-09",
+        "test_start_date": "2024-02-10"
+      }
+    },
+    {
+      "name": "walk_forward_folds_are_expanding_and_chronological",
+      "status": "pass",
+      "details": {
+        "folds": 8,
+        "violating_folds": []
+      }
+    },
+    {
+      "name": "pit_prior_counts_exclude_current_and_same_date_fights",
+      "status": "pass",
+      "details": {
+        "mismatched_rows": 0
+      }
+    },
+    {
+      "name": "source_split_performance_gap",
+      "status": "pass",
+      "details": {
+        "primary_model": "xgboost_rating_features",
+        "auc_gap": 0.035532621954741384,
+        "accuracy_gap": 0.02657787703816683,
+        "test_by_source": {
+          "sherdog": {
+            "rows": 1096,
+            "accuracy": 0.6177007299270073,
+            "log_loss": 0.6504293084144592,
+            "brier_score": 0.2294745296239853,
+            "auc": 0.6542835570469798
+          },
+          "ufcstats": {
+            "rows": 1206,
+            "accuracy": 0.6442786069651741,
+            "log_loss": 0.6395787000656128,
+            "brier_score": 0.22424058616161346,
+            "auc": 0.6898161790017212
+          }
+        }
+      }
+    },
+    {
+      "name": "high_feature_missingness",
+      "status": "warn",
+      "details": {
+        "threshold": 0.6,
+        "features": {
+          "delta_avg_sig_str_landed": 0.625107,
+          "delta_avg_sig_str_absorbed": 0.625107,
+          "delta_avg_td_landed": 0.625107,
+          "delta_avg_td_attempted": 0.625107,
+          "delta_avg_sub_attempts": 0.625107,
+          "delta_avg_ctrl_sec": 0.630523
+        }
+      }
+    }
+  ],
+  "dataset": {
+    "rows": 17541,
+    "date_min": "1994-03-11",
+    "date_max": "2026-06-06",
+    "feature_count": 24,
+    "label_balance": {
+      "fighter_a_wins": 8303,
+      "fighter_b_wins": 9238
+    }
+  }
+}

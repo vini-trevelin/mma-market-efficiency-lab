@@ -1,6 +1,6 @@
 {
   "model_version": "xgboost_fight_outcome_v1",
-  "created_at_utc": "2026-06-12T03:28:46.253950+00:00",
+  "created_at_utc": "2026-06-12T04:43:33.412674+00:00",
   "objective": "binary:logistic",
   "probability_contract": "fighter_b_win_probability = 1 - fighter_a_win_probability",
   "feature_columns": [
@@ -22,7 +22,12 @@
     "delta_avg_td_landed",
     "delta_avg_td_attempted",
     "delta_avg_sub_attempts",
-    "delta_avg_ctrl_sec"
+    "delta_avg_ctrl_sec",
+    "delta_pre_fight_elo",
+    "delta_elo_expected_win_prob",
+    "delta_elo_uncertainty",
+    "delta_recent_3_win_rate",
+    "delta_recent_5_win_rate"
   ],
   "target_column": "fighter_a_won",
   "dataset": {
@@ -49,7 +54,12 @@
       "delta_avg_td_landed",
       "delta_avg_td_attempted",
       "delta_avg_sub_attempts",
-      "delta_avg_ctrl_sec"
+      "delta_avg_ctrl_sec",
+      "delta_pre_fight_elo",
+      "delta_elo_expected_win_prob",
+      "delta_elo_uncertainty",
+      "delta_recent_3_win_rate",
+      "delta_recent_5_win_rate"
     ],
     "target_column": "fighter_a_won",
     "orientation": "fighter_a_id is lexicographically first; deltas are fighter_a - fighter_b",
@@ -76,7 +86,12 @@
       "delta_avg_td_landed": 0.625107,
       "delta_avg_td_attempted": 0.625107,
       "delta_avg_sub_attempts": 0.625107,
-      "delta_avg_ctrl_sec": 0.630523
+      "delta_avg_ctrl_sec": 0.630523,
+      "delta_pre_fight_elo": 0.0,
+      "delta_elo_expected_win_prob": 0.0,
+      "delta_elo_uncertainty": 0.0,
+      "delta_recent_3_win_rate": 0.3599,
+      "delta_recent_5_win_rate": 0.3599
     },
     "date_min": "1994-03-11",
     "date_max": "2026-06-06"

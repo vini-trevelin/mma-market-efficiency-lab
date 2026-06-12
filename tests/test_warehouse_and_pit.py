@@ -4,9 +4,10 @@ from dataclasses import replace
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from mma_eff_lab.config import get_settings
-from mma_eff_lab.features.pit import build_pit_features
+from mma_eff_lab.features.pit import INITIAL_ELO, build_pit_features
 from mma_eff_lab.warehouse.build import MANUAL_OVERRIDE_TABLE, build_warehouse
 from tests.test_sherdog_parser import (
     SHERDOG_BLUE_ID,
@@ -171,7 +172,14 @@ def test_pit_features_exclude_current_and_same_date_fights(tmp_path: Path) -> No
     with duckdb.connect(str(settings.warehouse_path), read_only=True) as conn:
         rows = conn.execute(
             """
-            select fight_id, fighter_id, prior_fights, prior_wins
+            select
+              fight_id,
+              fighter_id,
+              prior_fights,
+              prior_wins,
+              pre_fight_elo,
+              elo_expected_win_prob,
+              recent_3_win_rate
             from pit_fighter_features
             where fighter_id = ?
             order by event_date, fight_id
@@ -182,6 +190,15 @@ def test_pit_features_exclude_current_and_same_date_fights(tmp_path: Path) -> No
     assert rows[1][2] == 0
     assert rows[2][2] == 2
     assert rows[2][3] == 2
+    assert rows[0][4] == INITIAL_ELO
+    assert rows[1][4] == INITIAL_ELO
+    assert rows[2][4] > INITIAL_ELO
+    assert rows[0][5] == pytest.approx(0.5)
+    assert rows[1][5] == pytest.approx(0.5)
+    assert rows[2][5] > 0.5
+    assert rows[0][6] is None
+    assert rows[1][6] is None
+    assert rows[2][6] == pytest.approx(1.0)
 
 
 def test_sherdog_history_supplements_linked_ufc_pit_features(tmp_path: Path) -> None:

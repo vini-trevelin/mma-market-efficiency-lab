@@ -131,6 +131,8 @@ uv run python -m mma_eff_lab build-warehouse
 uv run python -m mma_eff_lab build-features
 uv run python -m mma_eff_lab build-model-dataset
 uv run python -m mma_eff_lab train-xgboost-model
+uv run python -m mma_eff_lab benchmark-fight-models
+uv run python -m mma_eff_lab validate-model-quality
 uv run python -m mma_eff_lab validate-warehouse
 ```
 
@@ -173,6 +175,11 @@ That command runs warehouse rebuild, feature rebuild, and audit rebuild in one p
   model datasets from PIT matchup features and labels.
 - `src/mma_eff_lab/models/train.py`: train the XGBoost V1 fight outcome model and
   write metrics/model metadata artifacts.
+- `src/mma_eff_lab/models/benchmark.py`: compare baseline XGBoost, XGBoost with
+  rating features, and CatBoost with rating features using temporal and
+  walk-forward evaluation.
+- `src/mma_eff_lab/models/quality.py`: write model/data quality checks for
+  leakage, chronology, source gaps, label balance, and missingness.
 - `src/mma_eff_lab/models/predict.py`: load model artifacts and return complement
   win probabilities for an ordered fighter pair.
 - `src/mma_eff_lab/audit/warehouse.py`: rebuild audit summary, checks, coverage,

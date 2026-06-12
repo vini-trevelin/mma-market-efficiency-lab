@@ -1,0 +1,571 @@
+{
+  "created_at_utc": "2026-06-12T04:51:25.256303+00:00",
+  "dataset": {
+    "input_rows": 17838,
+    "training_rows": 17541,
+    "excluded_draw_nc": 297,
+    "excluded_invalid_label": 0,
+    "feature_columns": [
+      "delta_prior_fights",
+      "delta_prior_wins",
+      "delta_prior_losses",
+      "delta_prior_draws",
+      "delta_prior_nc",
+      "delta_days_since_last_fight",
+      "delta_age_years",
+      "delta_height_in",
+      "delta_reach_in",
+      "delta_wins_by_ko_tko",
+      "delta_wins_by_sub",
+      "delta_wins_by_dec",
+      "delta_avg_fight_time_sec",
+      "delta_avg_sig_str_landed",
+      "delta_avg_sig_str_absorbed",
+      "delta_avg_td_landed",
+      "delta_avg_td_attempted",
+      "delta_avg_sub_attempts",
+      "delta_avg_ctrl_sec",
+      "delta_pre_fight_elo",
+      "delta_elo_expected_win_prob",
+      "delta_elo_uncertainty",
+      "delta_recent_3_win_rate",
+      "delta_recent_5_win_rate"
+    ],
+    "target_column": "fighter_a_won",
+    "orientation": "fighter_a_id is lexicographically first; deltas are fighter_a - fighter_b",
+    "label_balance": {
+      "fighter_a_wins": 8303,
+      "fighter_b_wins": 9238
+    },
+    "missingness": {
+      "delta_prior_fights": 0.0,
+      "delta_prior_wins": 0.0,
+      "delta_prior_losses": 0.0,
+      "delta_prior_draws": 0.0,
+      "delta_prior_nc": 0.0,
+      "delta_days_since_last_fight": 0.356764,
+      "delta_age_years": 0.101134,
+      "delta_height_in": 0.095377,
+      "delta_reach_in": 0.549114,
+      "delta_wins_by_ko_tko": 0.0,
+      "delta_wins_by_sub": 0.0,
+      "delta_wins_by_dec": 0.0,
+      "delta_avg_fight_time_sec": 0.356992,
+      "delta_avg_sig_str_landed": 0.625107,
+      "delta_avg_sig_str_absorbed": 0.625107,
+      "delta_avg_td_landed": 0.625107,
+      "delta_avg_td_attempted": 0.625107,
+      "delta_avg_sub_attempts": 0.625107,
+      "delta_avg_ctrl_sec": 0.630523,
+      "delta_pre_fight_elo": 0.0,
+      "delta_elo_expected_win_prob": 0.0,
+      "delta_elo_uncertainty": 0.0,
+      "delta_recent_3_win_rate": 0.3599,
+      "delta_recent_5_win_rate": 0.3599
+    },
+    "date_min": "1994-03-11",
+    "date_max": "2026-06-06"
+  },
+  "walk_forward": {
+    "folds": 8,
+    "initial_train_fraction": 0.5
+  },
+  "benchmarks": [
+    {
+      "name": "baseline_xgboost",
+      "model_type": "xgboost",
+      "feature_count": 19,
+      "feature_columns": [
+        "delta_prior_fights",
+        "delta_prior_wins",
+        "delta_prior_losses",
+        "delta_prior_draws",
+        "delta_prior_nc",
+        "delta_days_since_last_fight",
+        "delta_age_years",
+        "delta_height_in",
+        "delta_reach_in",
+        "delta_wins_by_ko_tko",
+        "delta_wins_by_sub",
+        "delta_wins_by_dec",
+        "delta_avg_fight_time_sec",
+        "delta_avg_sig_str_landed",
+        "delta_avg_sig_str_absorbed",
+        "delta_avg_td_landed",
+        "delta_avg_td_attempted",
+        "delta_avg_sub_attempts",
+        "delta_avg_ctrl_sec"
+      ],
+      "temporal_split": {
+        "cutoffs": {
+          "train_end_date": "2021-09-21",
+          "validation_end_date": "2024-02-09",
+          "test_start_date": "2024-02-10"
+        },
+        "validation": {
+          "rows": 2519,
+          "accuracy": 0.6208813021040095,
+          "log_loss": 0.6535031795501709,
+          "brier_score": 0.2308240532875061,
+          "auc": 0.6543147073058864
+        },
+        "test": {
+          "rows": 2302,
+          "accuracy": 0.6355343179843614,
+          "log_loss": 0.6512067317962646,
+          "brier_score": 0.22965076565742493,
+          "auc": 0.6631622371677875
+        },
+        "test_by_source": {
+          "sherdog": {
+            "rows": 1096,
+            "accuracy": 0.6268248175182481,
+            "log_loss": 0.6572369337081909,
+            "brier_score": 0.23254208266735077,
+            "auc": 0.642486577181208
+          },
+          "ufcstats": {
+            "rows": 1206,
+            "accuracy": 0.6434494195688225,
+            "log_loss": 0.6457264423370361,
+            "brier_score": 0.2270231992006302,
+            "auc": 0.6800537005163512
+          }
+        }
+      },
+      "walk_forward": {
+        "summary": {
+          "rows": 8608,
+          "accuracy": 0.620817843866171,
+          "log_loss": 0.6533827583014786,
+          "brier_score": 0.23072131504217913,
+          "auc": 0.6572699345144449
+        },
+        "folds": [
+          {
+            "fold": 1,
+            "train_end_date": "2018-04-13",
+            "test_start_date": "2018-04-14",
+            "test_end_date": "2019-05-03",
+            "rows": 1311,
+            "accuracy": 0.6086956521739131,
+            "log_loss": 0.6542000770568848,
+            "brier_score": 0.2311851531267166,
+            "auc": 0.6538853446748184
+          },
+          {
+            "fold": 2,
+            "train_end_date": "2019-05-03",
+            "test_start_date": "2019-05-04",
+            "test_end_date": "2020-06-20",
+            "rows": 1281,
+            "accuracy": 0.6159250585480094,
+            "log_loss": 0.6534081697463989,
+            "brier_score": 0.23083826899528503,
+            "auc": 0.6535433746518652
+          },
+          {
+            "fold": 3,
+            "train_end_date": "2020-06-20",
+            "test_start_date": "2020-06-21",
+            "test_end_date": "2021-07-17",
+            "rows": 1007,
+            "accuracy": 0.6146971201588878,
+            "log_loss": 0.6569609045982361,
+            "brier_score": 0.232387512922287,
+            "auc": 0.6544437869822486
+          },
+          {
+            "fold": 4,
+            "train_end_date": "2021-07-17",
+            "test_start_date": "2021-07-24",
+            "test_end_date": "2022-07-26",
+            "rows": 1127,
+            "accuracy": 0.6060337178349601,
+            "log_loss": 0.6600149273872375,
+            "brier_score": 0.23377683758735657,
+            "auc": 0.6429931972789116
+          },
+          {
+            "fold": 5,
+            "train_end_date": "2022-07-26",
+            "test_start_date": "2022-07-30",
+            "test_end_date": "2023-08-04",
+            "rows": 1108,
+            "accuracy": 0.6453068592057761,
+            "log_loss": 0.6388407945632935,
+            "brier_score": 0.2239355742931366,
+            "auc": 0.6826921498119962
+          },
+          {
+            "fold": 6,
+            "train_end_date": "2023-08-04",
+            "test_start_date": "2023-08-05",
+            "test_end_date": "2024-07-19",
+            "rows": 939,
+            "accuracy": 0.6187433439829606,
+            "log_loss": 0.6632671356201172,
+            "brier_score": 0.23530511558055878,
+            "auc": 0.6384657384657384
+          },
+          {
+            "fold": 7,
+            "train_end_date": "2024-07-19",
+            "test_start_date": "2024-07-20",
+            "test_end_date": "2025-07-05",
+            "rows": 949,
+            "accuracy": 0.6396206533192834,
+            "log_loss": 0.6485565900802612,
+            "brier_score": 0.2285122126340866,
+            "auc": 0.6688961491704805
+          },
+          {
+            "fold": 8,
+            "train_end_date": "2025-07-05",
+            "test_start_date": "2025-07-11",
+            "test_end_date": "2026-06-06",
+            "rows": 886,
+            "accuracy": 0.6230248306997742,
+            "log_loss": 0.6525130271911621,
+            "brier_score": 0.23007968068122864,
+            "auc": 0.6633284805762011
+          }
+        ]
+      }
+    },
+    {
+      "name": "xgboost_rating_features",
+      "model_type": "xgboost",
+      "feature_count": 24,
+      "feature_columns": [
+        "delta_prior_fights",
+        "delta_prior_wins",
+        "delta_prior_losses",
+        "delta_prior_draws",
+        "delta_prior_nc",
+        "delta_days_since_last_fight",
+        "delta_age_years",
+        "delta_height_in",
+        "delta_reach_in",
+        "delta_wins_by_ko_tko",
+        "delta_wins_by_sub",
+        "delta_wins_by_dec",
+        "delta_avg_fight_time_sec",
+        "delta_avg_sig_str_landed",
+        "delta_avg_sig_str_absorbed",
+        "delta_avg_td_landed",
+        "delta_avg_td_attempted",
+        "delta_avg_sub_attempts",
+        "delta_avg_ctrl_sec",
+        "delta_pre_fight_elo",
+        "delta_elo_expected_win_prob",
+        "delta_elo_uncertainty",
+        "delta_recent_3_win_rate",
+        "delta_recent_5_win_rate"
+      ],
+      "temporal_split": {
+        "cutoffs": {
+          "train_end_date": "2021-09-21",
+          "validation_end_date": "2024-02-09",
+          "test_start_date": "2024-02-10"
+        },
+        "validation": {
+          "rows": 2519,
+          "accuracy": 0.628423977768956,
+          "log_loss": 0.6499637961387634,
+          "brier_score": 0.22910359501838684,
+          "auc": 0.6614920545223717
+        },
+        "test": {
+          "rows": 2302,
+          "accuracy": 0.631624674196351,
+          "log_loss": 0.6447447538375854,
+          "brier_score": 0.2267325073480606,
+          "auc": 0.6736512814218643
+        },
+        "test_by_source": {
+          "sherdog": {
+            "rows": 1096,
+            "accuracy": 0.6177007299270073,
+            "log_loss": 0.6504293084144592,
+            "brier_score": 0.2294745296239853,
+            "auc": 0.6542835570469798
+          },
+          "ufcstats": {
+            "rows": 1206,
+            "accuracy": 0.6442786069651741,
+            "log_loss": 0.6395787000656128,
+            "brier_score": 0.22424058616161346,
+            "auc": 0.6898161790017212
+          }
+        }
+      },
+      "walk_forward": {
+        "summary": {
+          "rows": 8608,
+          "accuracy": 0.6270910780669146,
+          "log_loss": 0.6496828601608675,
+          "brier_score": 0.2290160813806813,
+          "auc": 0.6640143957822815
+        },
+        "folds": [
+          {
+            "fold": 1,
+            "train_end_date": "2018-04-13",
+            "test_start_date": "2018-04-14",
+            "test_end_date": "2019-05-03",
+            "rows": 1311,
+            "accuracy": 0.6025934401220442,
+            "log_loss": 0.6482821106910706,
+            "brier_score": 0.2287243902683258,
+            "auc": 0.6604164917876829
+          },
+          {
+            "fold": 2,
+            "train_end_date": "2019-05-03",
+            "test_start_date": "2019-05-04",
+            "test_end_date": "2020-06-20",
+            "rows": 1281,
+            "accuracy": 0.6221701795472288,
+            "log_loss": 0.6510329246520996,
+            "brier_score": 0.22970688343048096,
+            "auc": 0.6587322990624878
+          },
+          {
+            "fold": 3,
+            "train_end_date": "2020-06-20",
+            "test_start_date": "2020-06-21",
+            "test_end_date": "2021-07-17",
+            "rows": 1007,
+            "accuracy": 0.6246276067527309,
+            "log_loss": 0.6569135189056396,
+            "brier_score": 0.23217245936393738,
+            "auc": 0.6564220907297831
+          },
+          {
+            "fold": 4,
+            "train_end_date": "2021-07-17",
+            "test_start_date": "2021-07-24",
+            "test_end_date": "2022-07-26",
+            "rows": 1127,
+            "accuracy": 0.6157941437444543,
+            "log_loss": 0.6586484313011169,
+            "brier_score": 0.23288394510746002,
+            "auc": 0.6488498655276065
+          },
+          {
+            "fold": 5,
+            "train_end_date": "2022-07-26",
+            "test_start_date": "2022-07-30",
+            "test_end_date": "2023-08-04",
+            "rows": 1108,
+            "accuracy": 0.6534296028880866,
+            "log_loss": 0.6360523104667664,
+            "brier_score": 0.22271469235420227,
+            "auc": 0.6869743690786989
+          },
+          {
+            "fold": 6,
+            "train_end_date": "2023-08-04",
+            "test_start_date": "2023-08-05",
+            "test_end_date": "2024-07-19",
+            "rows": 939,
+            "accuracy": 0.630457933972311,
+            "log_loss": 0.6550887227058411,
+            "brier_score": 0.2314196228981018,
+            "auc": 0.6552757302757302
+          },
+          {
+            "fold": 7,
+            "train_end_date": "2024-07-19",
+            "test_start_date": "2024-07-20",
+            "test_end_date": "2025-07-05",
+            "rows": 949,
+            "accuracy": 0.642781875658588,
+            "log_loss": 0.646030068397522,
+            "brier_score": 0.2274051308631897,
+            "auc": 0.6718906428775744
+          },
+          {
+            "fold": 8,
+            "train_end_date": "2025-07-05",
+            "test_start_date": "2025-07-11",
+            "test_end_date": "2026-06-06",
+            "rows": 886,
+            "accuracy": 0.6343115124153499,
+            "log_loss": 0.6454104781150818,
+            "brier_score": 0.22700004279613495,
+            "auc": 0.6742420759584195
+          }
+        ]
+      }
+    },
+    {
+      "name": "catboost_rating_features",
+      "model_type": "catboost",
+      "feature_count": 24,
+      "feature_columns": [
+        "delta_prior_fights",
+        "delta_prior_wins",
+        "delta_prior_losses",
+        "delta_prior_draws",
+        "delta_prior_nc",
+        "delta_days_since_last_fight",
+        "delta_age_years",
+        "delta_height_in",
+        "delta_reach_in",
+        "delta_wins_by_ko_tko",
+        "delta_wins_by_sub",
+        "delta_wins_by_dec",
+        "delta_avg_fight_time_sec",
+        "delta_avg_sig_str_landed",
+        "delta_avg_sig_str_absorbed",
+        "delta_avg_td_landed",
+        "delta_avg_td_attempted",
+        "delta_avg_sub_attempts",
+        "delta_avg_ctrl_sec",
+        "delta_pre_fight_elo",
+        "delta_elo_expected_win_prob",
+        "delta_elo_uncertainty",
+        "delta_recent_3_win_rate",
+        "delta_recent_5_win_rate"
+      ],
+      "temporal_split": {
+        "cutoffs": {
+          "train_end_date": "2021-09-21",
+          "validation_end_date": "2024-02-09",
+          "test_start_date": "2024-02-10"
+        },
+        "validation": {
+          "rows": 2519,
+          "accuracy": 0.6157205240174672,
+          "log_loss": 0.6501042430482051,
+          "brier_score": 0.2291982410708969,
+          "auc": 0.6616054527439835
+        },
+        "test": {
+          "rows": 2302,
+          "accuracy": 0.6329278887923545,
+          "log_loss": 0.6477897093870238,
+          "brier_score": 0.2281407327766283,
+          "auc": 0.6694028567294061
+        },
+        "test_by_source": {
+          "sherdog": {
+            "rows": 1096,
+            "accuracy": 0.6213503649635036,
+            "log_loss": 0.6508043252174972,
+            "brier_score": 0.22969414866980536,
+            "auc": 0.6535687919463087
+          },
+          "ufcstats": {
+            "rows": 1206,
+            "accuracy": 0.6434494195688225,
+            "log_loss": 0.6450500585162122,
+            "brier_score": 0.22672900490024184,
+            "auc": 0.6840839931153184
+          }
+        }
+      },
+      "walk_forward": {
+        "summary": {
+          "rows": 8608,
+          "accuracy": 0.620817843866171,
+          "log_loss": 0.6513263480348059,
+          "brier_score": 0.22984266423525807,
+          "auc": 0.6600881009828223
+        },
+        "folds": [
+          {
+            "fold": 1,
+            "train_end_date": "2018-04-13",
+            "test_start_date": "2018-04-14",
+            "test_end_date": "2019-05-03",
+            "rows": 1311,
+            "accuracy": 0.6033562166285278,
+            "log_loss": 0.652430582990843,
+            "brier_score": 0.2305209121893426,
+            "auc": 0.6557868621580534
+          },
+          {
+            "fold": 2,
+            "train_end_date": "2019-05-03",
+            "test_start_date": "2019-05-04",
+            "test_end_date": "2020-06-20",
+            "rows": 1281,
+            "accuracy": 0.6143637782982045,
+            "log_loss": 0.6543030522760982,
+            "brier_score": 0.2313574852809183,
+            "auc": 0.6500730592711725
+          },
+          {
+            "fold": 3,
+            "train_end_date": "2020-06-20",
+            "test_start_date": "2020-06-21",
+            "test_end_date": "2021-07-17",
+            "rows": 1007,
+            "accuracy": 0.6166832174776564,
+            "log_loss": 0.6569730724947834,
+            "brier_score": 0.2324610097683959,
+            "auc": 0.654207100591716
+          },
+          {
+            "fold": 4,
+            "train_end_date": "2021-07-17",
+            "test_start_date": "2021-07-24",
+            "test_end_date": "2022-07-26",
+            "rows": 1127,
+            "accuracy": 0.6193433895297249,
+            "log_loss": 0.6583671671798754,
+            "brier_score": 0.23296753545172408,
+            "auc": 0.6466587565258661
+          },
+          {
+            "fold": 5,
+            "train_end_date": "2022-07-26",
+            "test_start_date": "2022-07-30",
+            "test_end_date": "2023-08-04",
+            "rows": 1108,
+            "accuracy": 0.6335740072202166,
+            "log_loss": 0.6371839434904993,
+            "brier_score": 0.22324015919684032,
+            "auc": 0.684759371459534
+          },
+          {
+            "fold": 6,
+            "train_end_date": "2023-08-04",
+            "test_start_date": "2023-08-05",
+            "test_end_date": "2024-07-19",
+            "rows": 939,
+            "accuracy": 0.6198083067092651,
+            "log_loss": 0.6561033921546833,
+            "brier_score": 0.23209731458214242,
+            "auc": 0.6499499499499499
+          },
+          {
+            "fold": 7,
+            "train_end_date": "2024-07-19",
+            "test_start_date": "2024-07-20",
+            "test_end_date": "2025-07-05",
+            "rows": 949,
+            "accuracy": 0.6322444678609063,
+            "log_loss": 0.6476405793679512,
+            "brier_score": 0.2281173076378852,
+            "auc": 0.6673028103546911
+          },
+          {
+            "fold": 8,
+            "train_end_date": "2025-07-05",
+            "test_start_date": "2025-07-11",
+            "test_end_date": "2026-06-06",
+            "rows": 886,
+            "accuracy": 0.6354401805869074,
+            "log_loss": 0.6465857943138367,
+            "brier_score": 0.22741348779917092,
+            "auc": 0.6739074911245626
+          }
+        ]
+      }
+    }
+  ]
+}

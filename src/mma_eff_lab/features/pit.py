@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from math import sqrt
 from typing import Any
 
 import duckdb
@@ -28,7 +29,15 @@ NUMERIC_FEATURES = [
     "avg_td_attempted",
     "avg_sub_attempts",
     "avg_ctrl_sec",
+    "pre_fight_elo",
+    "elo_expected_win_prob",
+    "elo_uncertainty",
+    "recent_3_win_rate",
+    "recent_5_win_rate",
 ]
+
+INITIAL_ELO = 1500.0
+ELO_K_FACTOR = 32.0
 
 
 def build_pit_features(settings: Settings | None = None) -> dict[str, int]:
@@ -71,6 +80,7 @@ def build_pit_features(settings: Settings | None = None) -> dict[str, int]:
               on opp.fight_id = p.fight_id and opp.fighter_id = p.opponent_id
             """
         ).fetchdf()
+        base = _add_pre_fight_ratings(base)
         fighter_features = _build_fighter_features(base)
         matchup_features = _build_matchup_features(fighter_features)
         conn.execute("drop table if exists pit_fighter_features")
@@ -142,6 +152,11 @@ def _feature_row(current: dict[str, Any], history: pd.DataFrame) -> dict[str, An
         "avg_td_attempted": _mean(history, "td_attempted"),
         "avg_sub_attempts": _mean(history, "sub_att"),
         "avg_ctrl_sec": _mean(history, "ctrl_sec"),
+        "pre_fight_elo": current.get("pre_fight_elo", INITIAL_ELO),
+        "elo_expected_win_prob": current.get("elo_expected_win_prob"),
+        "elo_uncertainty": _elo_uncertainty(prior_fights),
+        "recent_3_win_rate": _recent_win_rate(history, 3),
+        "recent_5_win_rate": _recent_win_rate(history, 5),
     }
     return output
 
@@ -216,6 +231,87 @@ def _mean(history: pd.DataFrame, column: str) -> float | None:
         return None
     series = pd.to_numeric(history[column], errors="coerce").dropna()
     return float(series.mean()) if not series.empty else None
+
+
+def _add_pre_fight_ratings(base: pd.DataFrame) -> pd.DataFrame:
+    if base.empty:
+        return base
+    output = base.copy()
+    output["event_date"] = pd.to_datetime(output["event_date"]).dt.date
+    ratings: dict[str, float] = {}
+    pre_fight_elo: dict[tuple[str, str], float] = {}
+    expected_win_prob: dict[tuple[str, str], float] = {}
+
+    for event_date, date_group in output.sort_values(
+        ["event_date", "event_id", "fight_id", "corner"]
+    ).groupby("event_date", sort=True):
+        del event_date
+        updates: list[tuple[str, float]] = []
+        for _, fight_group in date_group.groupby("fight_id", sort=True):
+            participants = fight_group.to_dict("records")
+            if len(participants) != 2:
+                continue
+            first, second = participants
+            first_id = str(first["fighter_id"])
+            second_id = str(second["fighter_id"])
+            first_rating = ratings.get(first_id, INITIAL_ELO)
+            second_rating = ratings.get(second_id, INITIAL_ELO)
+            first_expected = _elo_expected(first_rating, second_rating)
+            second_expected = 1.0 - first_expected
+            pre_fight_elo[(str(first["fight_id"]), first_id)] = first_rating
+            pre_fight_elo[(str(second["fight_id"]), second_id)] = second_rating
+            expected_win_prob[(str(first["fight_id"]), first_id)] = first_expected
+            expected_win_prob[(str(second["fight_id"]), second_id)] = second_expected
+
+            first_outcome = first.get("outcome")
+            second_outcome = second.get("outcome")
+            if first_outcome in {"D", "NC"} or second_outcome in {"D", "NC"}:
+                continue
+            first_won = _bool_or_none(first.get("winner_flag"))
+            second_won = _bool_or_none(second.get("winner_flag"))
+            if first_won is None or second_won is None or first_won == second_won:
+                continue
+            first_score = 1.0 if first_won else 0.0
+            second_score = 1.0 - first_score
+            updates.append(
+                (first_id, first_rating + ELO_K_FACTOR * (first_score - first_expected))
+            )
+            updates.append(
+                (second_id, second_rating + ELO_K_FACTOR * (second_score - second_expected))
+            )
+        for fighter_id, updated_rating in updates:
+            ratings[fighter_id] = ratings.get(fighter_id, INITIAL_ELO) + (
+                updated_rating - ratings.get(fighter_id, INITIAL_ELO)
+            )
+
+    keys = list(zip(output["fight_id"].astype(str), output["fighter_id"].astype(str), strict=True))
+    output["pre_fight_elo"] = [pre_fight_elo.get(key, INITIAL_ELO) for key in keys]
+    output["elo_expected_win_prob"] = [expected_win_prob.get(key) for key in keys]
+    return output
+
+
+def _elo_expected(left_rating: float, right_rating: float) -> float:
+    return 1.0 / (1.0 + 10 ** ((right_rating - left_rating) / 400.0))
+
+
+def _bool_or_none(value: Any) -> bool | None:
+    if pd.isna(value):
+        return None
+    return bool(value)
+
+
+def _elo_uncertainty(prior_fights: int) -> float:
+    return 1.0 / sqrt(prior_fights + 1)
+
+
+def _recent_win_rate(history: pd.DataFrame, window: int) -> float | None:
+    if history.empty:
+        return None
+    recent = history.sort_values(["event_date", "fight_id"]).tail(window)
+    decisions = recent[recent["outcome"].isin(["W", "L"])]
+    if decisions.empty:
+        return None
+    return float(decisions["winner_flag"].fillna(False).mean())
 
 
 def _delta(left: object, right: object) -> float | None:

@@ -13,7 +13,9 @@ from mma_eff_lab.download.sherdog import (
 )
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
+from mma_eff_lab.models.benchmark import benchmark_fight_models
 from mma_eff_lab.models.dataset import write_model_dataset
+from mma_eff_lab.models.quality import validate_model_quality
 from mma_eff_lab.models.train import train_xgboost_model
 from mma_eff_lab.reports.static import make_reports
 from mma_eff_lab.warehouse.build import build_warehouse, parse_cached_sherdog, parse_cached_ufcstats
@@ -51,6 +53,13 @@ def main() -> None:
     train_model.add_argument("--n-estimators", type=int, default=200)
     train_model.add_argument("--max-depth", type=int, default=3)
     train_model.add_argument("--learning-rate", type=float, default=0.05)
+    benchmark_models = subparsers.add_parser("benchmark-fight-models")
+    benchmark_models.add_argument("--output-path")
+    benchmark_models.add_argument("--folds", type=int, default=8)
+    benchmark_models.add_argument("--initial-train-fraction", type=float, default=0.5)
+    quality = subparsers.add_parser("validate-model-quality")
+    quality.add_argument("--benchmark-path")
+    quality.add_argument("--output-path")
     subparsers.add_parser("make-reports")
     subparsers.add_parser("validate-warehouse")
     subparsers.add_parser("apply-identity-overrides")
@@ -95,6 +104,17 @@ def main() -> None:
             n_estimators=args.n_estimators,
             max_depth=args.max_depth,
             learning_rate=args.learning_rate,
+        )
+    elif args.command == "benchmark-fight-models":
+        result = benchmark_fight_models(
+            output_path=Path(args.output_path) if args.output_path else None,
+            folds=args.folds,
+            initial_train_fraction=args.initial_train_fraction,
+        )
+    elif args.command == "validate-model-quality":
+        result = validate_model_quality(
+            benchmark_path=Path(args.benchmark_path) if args.benchmark_path else None,
+            output_path=Path(args.output_path) if args.output_path else None,
         )
     elif args.command == "make-reports":
         result = make_reports()
