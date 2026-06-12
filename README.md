@@ -12,6 +12,15 @@ uv run python -m mma_eff_lab download-ufcstats
 uv run python -m mma_eff_lab download-sherdog --promotion-set major
 ```
 
+After a warehouse exists, expand UFC-to-Sherdog identity coverage by searching
+Sherdog Fight Finder for UFC fighters that still lack a linked Sherdog profile:
+
+```bash
+uv run python -m mma_eff_lab download-sherdog-ufc-profiles
+uv run python -m mma_eff_lab parse-sherdog
+uv run python -m mma_eff_lab build-warehouse
+```
+
 Rebuild parsed outputs, warehouse, features, and audit:
 
 ```bash
@@ -46,6 +55,9 @@ uv run python -m mma_eff_lab apply-identity-overrides
 - `download-ufcstats`: updates raw UFCStats event, fight, and fighter HTML cache.
 - `download-sherdog --promotion-set major`: updates raw Sherdog major-promotion
   event and fighter HTML cache.
+- `download-sherdog-ufc-profiles`: searches Sherdog Fight Finder for UFCStats
+  fighters without a linked Sherdog profile, downloads only unique exact-name
+  profile matches, and skips ambiguous names for manual review.
 - `parse-ufcstats`: converts cached UFCStats HTML into parsed parquet tables.
 - `parse-sherdog`: converts cached Sherdog HTML into parsed parquet tables.
 - `build-warehouse`: builds canonical warehouse tables in `data/warehouse/mma.duckdb`.

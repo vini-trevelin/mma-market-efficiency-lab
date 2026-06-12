@@ -384,4 +384,12 @@ def test_accepted_unresolved_persists_manual_no_candidate_state(tmp_path: Path) 
             """,
             [SHERDOG_ALT_ID],
         ).fetchone()
+        target_type = conn.execute(
+            """
+            select column_type
+            from (describe fighter_identity_manual_overrides)
+            where column_name = 'target_source_fighter_id'
+            """
+        ).fetchone()[0]
     assert row == ("manual_unresolved", f"sherdog:{SHERDOG_ALT_ID}", "no candidates found")
+    assert target_type == "VARCHAR"

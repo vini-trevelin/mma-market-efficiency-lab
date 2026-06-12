@@ -20,7 +20,9 @@ cookie, and retries the original page fetch.
 ## Supplemental Non-UFC Source
 
 Sherdog is a supplemental source for major non-UFC event/fight/result history. It is
-not used for UFC detailed stats and does not seed from fighter fight-history pages.
+also used for fighter profile pages that strengthen UFCStats/Sherdog identity links.
+It is not used for UFC detailed stats and does not seed fight rows from fighter
+fight-history pages.
 
 Major promotion seed set:
 
@@ -33,15 +35,21 @@ Major promotion seed set:
 - Rizin Fighting Federation: https://www.sherdog.com/organizations/Rizin-Fighting-Federation-10333
 - Dream: https://www.sherdog.com/organizations/Dream-1357
 - Invicta Fighting Championships: https://www.sherdog.com/organizations/Invicta-Fighting-Championships-4469
+- Dana White's Contender Series: https://www.sherdog.com/organizations/Dana-Whites-Contender-Series-12411
 
 Rules:
 
 - Raw HTML is cached under `data/raw/sherdog`.
 - Missing-only download is the default; `--force` is CLI-only.
 - Organization event pages seed event pages; event pages seed fighter bio pages.
+- `download-sherdog-ufc-profiles` searches Sherdog Fight Finder for UFCStats
+  fighters that still lack a Sherdog profile link, downloads only unique
+  exact-name profile results, and skips ambiguous names for manual review.
 - Fighter profile fight-history tables are not parsed as event seeds.
 - ONE Championship rows with clear non-MMA discipline tokens are quarantined.
-- Identity links are conservative: normalized full name plus exact DOB only.
+- Identity links are conservative: normalized full name plus exact DOB, or unique
+  normalized name with compatible DOB when the two sources differ by a small date
+  offset, same-year close date, or month/day swap.
 
 Operational note: Sherdog access can change with VPN/IP path. When request access
 works, the normal downloader can sweep organization, event, and fighter pages.

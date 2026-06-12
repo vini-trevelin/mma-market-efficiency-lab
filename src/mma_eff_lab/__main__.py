@@ -8,6 +8,7 @@ from mma_eff_lab.audit.warehouse import validate_warehouse
 from mma_eff_lab.download.sherdog import (
     PROMOTION_SETS,
     download_sherdog,
+    download_sherdog_ufc_profiles,
     retry_missing_sherdog_fighters,
 )
 from mma_eff_lab.download.ufcstats import download_ufcstats
@@ -34,6 +35,10 @@ def main() -> None:
     sherdog.add_argument("--limit-events", type=int)
     sherdog.add_argument("--include-future", action="store_true")
     sherdog.add_argument("--sleep-seconds", type=float, default=1.0)
+
+    sherdog_profiles = subparsers.add_parser("download-sherdog-ufc-profiles")
+    sherdog_profiles.add_argument("--limit-fighters", type=int)
+    sherdog_profiles.add_argument("--sleep-seconds", type=float, default=1.0)
 
     subparsers.add_parser("parse-ufcstats")
     subparsers.add_parser("parse-sherdog")
@@ -68,6 +73,11 @@ def main() -> None:
             limit_events=args.limit_events,
             include_future=args.include_future,
             sleep_seconds=args.sleep_seconds,
+        )
+    elif args.command == "download-sherdog-ufc-profiles":
+        result = download_sherdog_ufc_profiles(
+            sleep_seconds=args.sleep_seconds,
+            limit_fighters=args.limit_fighters,
         )
     elif args.command == "parse-ufcstats":
         result = parse_cached_ufcstats()

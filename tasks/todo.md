@@ -1,5 +1,89 @@
 # Task Log
 
+# Unified Fighter Linkage and DWCS Coverage
+
+## Plan
+
+- [x] Inspect current UFCStats/Sherdog identity link coverage and unresolved counts.
+- [x] Verify where Dana White's Contender Series data exists and why it is absent.
+- [x] Add DWCS as an important Sherdog promotion seed.
+- [x] Add conservative DOB-tolerant automatic identity links for source date discrepancies.
+- [x] Add Sherdog Fight Finder profile search for UFC fighters missing Sherdog links.
+- [x] Rebuild parse/warehouse/features/audit and compare linkage/data coverage.
+- [x] Run XGBoost training after improved data is validated.
+
+## Review / Results
+
+- Current pre-change identity coverage:
+  - UFCStats fighters: `2,694`.
+  - Sherdog fighters: `6,600`.
+  - Sherdog linked to UFC canonical fighters: `856`.
+  - Sherdog unresolved/Sherdog-only: `5,744`.
+  - UFC fighters with linked Sherdog profile: `856 / 2,694`.
+  - UFC fighters with Sherdog fights in warehouse: `831 / 2,694`.
+- DWCS source finding:
+  - UFCStats completed events cache has no Contender Series / DWCS events.
+  - Sherdog has organization `Dana-Whites-Contender-Series-12411`.
+  - Sherdog reports that promotion has held `89` events and about `440` matches.
+- Implemented DWCS as part of the Sherdog `major` promotion seed list.
+- Implemented conservative automatic identity links for unique exact/cleaned names
+  with compatible DOB discrepancies:
+  - near date offset;
+  - month/day swap.
+- Implemented Sherdog UFC profile search:
+  - command: `uv run python -m mma_eff_lab download-sherdog-ufc-profiles`.
+  - searches UFCStats fighters without a linked Sherdog profile;
+  - tries initial variants like `TJ` -> `T.J.`;
+  - downloads only unique exact-name Fight Finder results;
+  - skips ambiguous names instead of guessing.
+- Profile search sweep results:
+  - UFC unlinked fighters searched: `1,557`.
+  - Sherdog search requests: `1,578`.
+  - unique exact profile matches: `1,212`.
+  - new Sherdog fighter profiles downloaded: `1,176`.
+  - already cached profile matches: `36`.
+  - no exact match: `170`.
+  - ambiguous exact match skipped: `175`.
+  - search/download failures: `0`.
+- Final identity coverage:
+  - UFCStats fighters: `2,694`.
+  - Sherdog fighters: `8,255`.
+  - Sherdog linked to UFC canonical fighters: `2,192`.
+  - Sherdog unresolved/Sherdog-only: `6,063`.
+  - UFC fighters with linked Sherdog profile: `2,192 / 2,694`.
+  - UFC fighters still without linked Sherdog profile: `502 / 2,694`.
+  - UFC fighters with Sherdog fights in warehouse: `1,123 / 2,694`.
+- Link-method additions:
+  - `cleaned_name_dob`: `1,534`.
+  - `cleaned_name_dob_near`: `27`.
+  - `cleaned_name_dob_month_day_swap`: `26`.
+  - `cleaned_name_dob_same_year_close`: `25`.
+  - `exact_name_dob`: `555`.
+  - `exact_name_dob_near`: `11`.
+  - `exact_name_dob_month_day_swap`: `11`.
+  - `exact_name_dob_same_year_close`: `3`.
+- DWCS coverage after rebuild:
+  - `89` Sherdog DWCS events.
+  - `351` DWCS fights.
+  - event date range: `2017-07-11` to `2025-10-14`.
+- Rebuild outputs:
+  - `events`: `2,050`.
+  - `fights`: `17,838`.
+  - `fight_participants`: `35,676`.
+  - `fighters`: `8,757`.
+  - `pit_matchup_features`: `17,838`.
+  - latest UFCStats event date: `2026-06-06`.
+  - latest Sherdog event date: `2026-06-06`.
+- XGBoost training after rebuild:
+  - command: `uv run python -m mma_eff_lab train-xgboost-model`.
+  - wall-clock time: `1.69s`.
+  - validation log loss: `0.6535`; validation Brier: `0.2308`; validation AUC: `0.6543`.
+  - test log loss: `0.6512`; test Brier: `0.2297`; test AUC: `0.6632`.
+  - test source split: Sherdog AUC `0.6425`, UFCStats AUC `0.6801`.
+- Audit after final rebuild:
+  - `179` checks pass.
+  - `2` warnings remain: `2` quarantined rows, unresolved Sherdog-only identities.
+
 # XGBoost Fight Outcome Model V1
 
 ## Plan
@@ -24,17 +108,17 @@
   - metrics for log loss, Brier score, AUC, accuracy, and source-stratified test metrics;
   - prediction helper returning `P(fighter_a wins)` and `P(fighter_b wins) = 1 - P(fighter_a wins)`.
 - Live dataset smoke:
-  - input rows: `17,487`;
-  - binary training rows: `17,196`;
-  - excluded draw/no-contest rows: `291`;
-  - label balance: `8,238` fighter A wins, `8,958` fighter B wins.
+  - input rows: `17,838`;
+  - binary training rows: `17,541`;
+  - excluded draw/no-contest rows: `297`;
+  - label balance: `8,303` fighter A wins, `9,238` fighter B wins.
 - Verification:
   - `uv run pytest tests/test_models.py` passed (`5` tests).
   - `uv run ruff check src tests` passed.
   - `uv run pytest` passed (`42` tests).
 - Environment note:
-  - XGBoost import is installed but local macOS runtime is missing `libomp.dylib`.
-  - Actual training command exits with a clear message to run `brew install libomp`.
+  - Local `libomp` is available.
+  - Full training command completes successfully.
 
 # Fight Outcome Model Research V1
 
@@ -51,7 +135,7 @@
 
 - Branch is `research-fight-model`.
 - Current modeling table size:
-  - `pit_matchup_features`: `17,487` fights.
+  - `pit_matchup_features`: `17,838` fights.
   - Latest source event date is `2026-06-06` for both UFCStats and Sherdog.
 - Current PIT feature coverage:
   - Sherdog fighter rows: `17,548`; prior-history coverage `65.5%`; age/height `88.3%`; reach `14.8%`; detailed stat history `9.7%`.

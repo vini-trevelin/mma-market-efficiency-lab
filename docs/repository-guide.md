@@ -112,6 +112,7 @@ Downloader commands can hit external sites and should be run intentionally:
 ```bash
 uv run python -m mma_eff_lab download-ufcstats
 uv run python -m mma_eff_lab download-sherdog --promotion-set major
+uv run python -m mma_eff_lab download-sherdog-ufc-profiles
 ```
 
 ## Update Playbook
@@ -122,6 +123,9 @@ Normal refresh from live sources:
 uv run python -m mma_eff_lab download-ufcstats
 uv run python -m mma_eff_lab download-sherdog --promotion-set major
 uv run python -m mma_eff_lab parse-ufcstats
+uv run python -m mma_eff_lab parse-sherdog
+uv run python -m mma_eff_lab build-warehouse
+uv run python -m mma_eff_lab download-sherdog-ufc-profiles
 uv run python -m mma_eff_lab parse-sherdog
 uv run python -m mma_eff_lab build-warehouse
 uv run python -m mma_eff_lab build-features
@@ -156,8 +160,8 @@ That command runs warehouse rebuild, feature rebuild, and audit rebuild in one p
 
 - `src/mma_eff_lab/download/ufcstats.py`: request-based UFCStats cache refresh,
   including the current browser-check proof-of-work workaround.
-- `src/mma_eff_lab/download/sherdog.py`: Sherdog organization, event, and fighter
-  cache refresh for the configured promotion sets.
+- `src/mma_eff_lab/download/sherdog.py`: Sherdog organization, event, fighter,
+  and UFC-profile search cache refresh for the configured source paths.
 - `src/mma_eff_lab/parse/ufcstats.py`: parse cached UFCStats HTML into event,
   fight, participant, fighter, and stat rows.
 - `src/mma_eff_lab/parse/sherdog.py`: parse cached Sherdog HTML into source-aware
@@ -177,7 +181,8 @@ That command runs warehouse rebuild, feature rebuild, and audit rebuild in one p
 ## Data and Source Rules
 
 UFCStats is canonical for UFC events, fights, fighter bios, and detailed stats.
-Sherdog is supplemental for major non-UFC event and result history.
+Sherdog is supplemental for major non-UFC event and result history, plus
+Sherdog profile pages used to strengthen UFCStats/Sherdog identity linkage.
 
 Raw HTML is cached before parsing. Missing-only download is the default. Do not
 replace cached data or force downloads unless the task requires it.

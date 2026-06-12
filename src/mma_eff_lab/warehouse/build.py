@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import duckdb
@@ -245,10 +245,15 @@ def table_counts(db_path: Path) -> dict[str, int]:
 
 def _write_table(conn: duckdb.DuckDBPyConnection, name: str, frame: pd.DataFrame) -> None:
     conn.execute(f"drop table if exists {name}")
-    if frame.empty and name in EMPTY_TABLE_SCHEMAS:
+    if name in EMPTY_TABLE_SCHEMAS:
         schema = EMPTY_TABLE_SCHEMAS[name]
         column_sql = ", ".join(f"{column} {sql_type}" for column, sql_type in schema.items())
         conn.execute(f"create table {name} ({column_sql})")
+        if frame.empty:
+            return
+        conn.register("frame", frame)
+        conn.execute(f"insert into {name} select * from frame")
+        conn.unregister("frame")
         return
     conn.register("frame", frame)
     if frame.empty:
@@ -554,6 +559,21 @@ def _identity_links(
         )
         if len(group) == 1
     }
+    unique_exact_name_ufc = {
+        key: group.iloc[0].to_dict()
+        for key, group in ufc[ufc["exact_name_key"] != ""].groupby("exact_name_key")
+        if len(group) == 1
+    }
+    unique_cleaned_name_ufc = {
+        key: group.iloc[0].to_dict()
+        for key, group in ufc[ufc["cleaned_name_key"] != ""].groupby("cleaned_name_key")
+        if len(group) == 1
+    }
+    sherdog = source_fighters[source_fighters["source"] == "sherdog"].copy()
+    sherdog["exact_name_key"] = sherdog.apply(_exact_name_key, axis=1)
+    sherdog["cleaned_name_key"] = sherdog.apply(_cleaned_name_key, axis=1)
+    unique_exact_sherdog_names = _unique_values(sherdog, "exact_name_key")
+    unique_cleaned_sherdog_names = _unique_values(sherdog, "cleaned_name_key")
     approved = manual_overrides[manual_overrides["decision"] == "approved"].copy()
     accepted_unresolved = manual_overrides[
         manual_overrides["decision"] == "accepted_unresolved"
@@ -642,6 +662,38 @@ def _identity_links(
                 link_method = "cleaned_name_dob"
                 confidence = 0.95
                 match_reason = "cleaned full name + exact dob"
+        elif (
+            source == "sherdog"
+            and exact_name_key in unique_exact_sherdog_names
+            and exact_name_key in unique_exact_name_ufc
+        ):
+            target = unique_exact_name_ufc[exact_name_key]
+            target_id = str(target["source_fighter_id"])
+            dob_status = _dob_match_status(row.get("dob"), target.get("dob"))
+            if dob_status in {"near", "month_day_swap", "same_year_close"} and (
+                source_fighter_id,
+                target_id,
+            ) not in rejected_pairs:
+                canonical_fighter_id = _canonical_id("ufcstats", target_id)
+                link_method = f"exact_name_dob_{dob_status}"
+                confidence = 0.92
+                match_reason = f"unique exact name + compatible dob ({dob_status})"
+        elif (
+            source == "sherdog"
+            and cleaned_name_key in unique_cleaned_sherdog_names
+            and cleaned_name_key in unique_cleaned_name_ufc
+        ):
+            target = unique_cleaned_name_ufc[cleaned_name_key]
+            target_id = str(target["source_fighter_id"])
+            dob_status = _dob_match_status(row.get("dob"), target.get("dob"))
+            if dob_status in {"near", "month_day_swap", "same_year_close"} and (
+                source_fighter_id,
+                target_id,
+            ) not in rejected_pairs:
+                canonical_fighter_id = _canonical_id("ufcstats", target_id)
+                link_method = f"cleaned_name_dob_{dob_status}"
+                confidence = 0.9
+                match_reason = f"unique cleaned name + compatible dob ({dob_status})"
         rows.append(
             {
                 "source": source,
@@ -733,6 +785,41 @@ def _identity_key(row: pd.Series | dict[str, object], cleaned: bool = False) -> 
     return f"{name}|{dob}"
 
 
+def _unique_values(frame: pd.DataFrame, column: str) -> set[str]:
+    return {
+        str(key)
+        for key, group in frame[frame[column] != ""].groupby(column)
+        if len(group) == 1
+    }
+
+
+def _dob_match_status(left: object, right: object) -> str:
+    left_date = _coerce_date(left)
+    right_date = _coerce_date(right)
+    if left_date is None or right_date is None:
+        return "missing"
+    if left_date == right_date:
+        return "exact"
+    if left_date.year != right_date.year:
+        return "conflict"
+    if abs((left_date - right_date).days) <= 7:
+        return "near"
+    if left_date.month == right_date.day and left_date.day == right_date.month:
+        return "month_day_swap"
+    if left_date.year == right_date.year and abs((left_date - right_date).days) <= 31:
+        return "same_year_close"
+    return "conflict"
+
+
+def _coerce_date(value: object) -> date | None:
+    if value is None or pd.isna(value):
+        return None
+    parsed = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    return parsed.date()
+
+
 def _exact_name_key(row: pd.Series | dict[str, object]) -> str:
     return _normalize_name(str(row.get("full_name") or ""))
 
@@ -745,7 +832,25 @@ def _cleaned_name_key(row: pd.Series | dict[str, object]) -> str:
 
 
 def _normalize_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+    return _collapse_initial_tokens(re.sub(r"[^a-z0-9]+", " ", value.lower()).split())
+
+
+def _collapse_initial_tokens(tokens: list[str]) -> str:
+    collapsed: list[str] = []
+    index = 0
+    while index < len(tokens):
+        if len(tokens[index]) == 1 and tokens[index].isalpha():
+            start = index
+            while index < len(tokens) and len(tokens[index]) == 1 and tokens[index].isalpha():
+                index += 1
+            if index - start > 1:
+                collapsed.append("".join(tokens[start:index]))
+            else:
+                collapsed.append(tokens[start])
+            continue
+        collapsed.append(tokens[index])
+        index += 1
+    return " ".join(collapsed).strip()
 
 
 def _strip_quoted_nickname(value: str) -> str:
@@ -820,6 +925,8 @@ def _normalize_manual_overrides(frame: pd.DataFrame) -> pd.DataFrame:
     ]
     if normalized.empty:
         return _typed_frame([], MANUAL_OVERRIDE_TABLE)
+    for column in EMPTY_COLUMNS[MANUAL_OVERRIDE_TABLE]:
+        normalized[column] = normalized[column].astype("string")
     return _dedupe(
         normalized,
         ["source", "source_fighter_id", "target_source", "target_source_fighter_id"],

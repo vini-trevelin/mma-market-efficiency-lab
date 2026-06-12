@@ -1,6 +1,6 @@
 {
   "model_version": "xgboost_fight_outcome_v1",
-  "created_at_utc": "2026-06-10T01:39:08.239773+00:00",
+  "created_at_utc": "2026-06-12T03:28:46.253950+00:00",
   "objective": "binary:logistic",
   "probability_contract": "fighter_b_win_probability = 1 - fighter_a_win_probability",
   "feature_columns": [
@@ -26,9 +26,9 @@
   ],
   "target_column": "fighter_a_won",
   "dataset": {
-    "input_rows": 17487,
-    "training_rows": 17196,
-    "excluded_draw_nc": 291,
+    "input_rows": 17838,
+    "training_rows": 17541,
+    "excluded_draw_nc": 297,
     "excluded_invalid_label": 0,
     "feature_columns": [
       "delta_prior_fights",
@@ -54,8 +54,8 @@
     "target_column": "fighter_a_won",
     "orientation": "fighter_a_id is lexicographically first; deltas are fighter_a - fighter_b",
     "label_balance": {
-      "fighter_a_wins": 8238,
-      "fighter_b_wins": 8958
+      "fighter_a_wins": 8303,
+      "fighter_b_wins": 9238
     },
     "missingness": {
       "delta_prior_fights": 0.0,
@@ -63,31 +63,31 @@
       "delta_prior_losses": 0.0,
       "delta_prior_draws": 0.0,
       "delta_prior_nc": 0.0,
-      "delta_days_since_last_fight": 0.362352,
-      "delta_age_years": 0.102931,
-      "delta_height_in": 0.097116,
-      "delta_reach_in": 0.54501,
+      "delta_days_since_last_fight": 0.356764,
+      "delta_age_years": 0.101134,
+      "delta_height_in": 0.095377,
+      "delta_reach_in": 0.549114,
       "delta_wins_by_ko_tko": 0.0,
       "delta_wins_by_sub": 0.0,
       "delta_wins_by_dec": 0.0,
-      "delta_avg_fight_time_sec": 0.362584,
-      "delta_avg_sig_str_landed": 0.618749,
-      "delta_avg_sig_str_absorbed": 0.618749,
-      "delta_avg_td_landed": 0.618749,
-      "delta_avg_td_attempted": 0.618749,
-      "delta_avg_sub_attempts": 0.618749,
-      "delta_avg_ctrl_sec": 0.624157
+      "delta_avg_fight_time_sec": 0.356992,
+      "delta_avg_sig_str_landed": 0.625107,
+      "delta_avg_sig_str_absorbed": 0.625107,
+      "delta_avg_td_landed": 0.625107,
+      "delta_avg_td_attempted": 0.625107,
+      "delta_avg_sub_attempts": 0.625107,
+      "delta_avg_ctrl_sec": 0.630523
     },
     "date_min": "1994-03-11",
     "date_max": "2026-06-06"
   },
   "split": {
-    "train_end_date": "2021-06-19",
-    "validation_end_date": "2024-01-13",
-    "test_start_date": "2024-01-19",
-    "train_rows": 12316,
-    "validation_rows": 2625,
-    "test_rows": 2255
+    "train_end_date": "2021-09-21",
+    "validation_end_date": "2024-02-09",
+    "test_start_date": "2024-02-10",
+    "train_rows": 12720,
+    "validation_rows": 2519,
+    "test_rows": 2302
   },
   "hyperparameters": {
     "n_estimators": 200,
