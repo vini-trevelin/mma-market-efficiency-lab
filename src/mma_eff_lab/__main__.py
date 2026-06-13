@@ -23,6 +23,7 @@ from mma_eff_lab.models.calibrated import (
 from mma_eff_lab.models.calibrated_walkforward import evaluate_calibrated_walkforward
 from mma_eff_lab.models.calibration import evaluate_model_calibration
 from mma_eff_lab.models.dataset import write_model_dataset
+from mma_eff_lab.models.model_card import write_model_card
 from mma_eff_lab.models.predict import predict_card, predict_fight
 from mma_eff_lab.models.quality import validate_model_quality
 from mma_eff_lab.models.train import train_xgboost_model
@@ -98,6 +99,9 @@ def main() -> None:
         choices=["xgboost_fight_outcome_v1", CALIBRATED_CATBOOST_VERSION],
     )
     subparsers.add_parser("make-reports")
+    write_card = subparsers.add_parser("write-model-card")
+    write_card.add_argument("--model-version", default=CALIBRATED_CATBOOST_VERSION)
+    write_card.add_argument("--output-dir")
     subparsers.add_parser("validate-warehouse")
     subparsers.add_parser("apply-identity-overrides")
     subparsers.add_parser("full-pipeline")
@@ -185,6 +189,11 @@ def main() -> None:
         )
     elif args.command == "make-reports":
         result = make_reports()
+    elif args.command == "write-model-card":
+        result = write_model_card(
+            model_version=args.model_version,
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+        )
     elif args.command == "validate-warehouse":
         result = validate_warehouse()
     elif args.command == "apply-identity-overrides":
