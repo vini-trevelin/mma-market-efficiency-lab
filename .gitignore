@@ -16,5 +16,8 @@ apps/web/tsconfig.tsbuildinfo
 
 data/raw/
 data/warehouse/
+data/models/
+data/predictions/
+data/upcoming/
 data/reports/
 data/logs/
