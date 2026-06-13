@@ -1,5 +1,5 @@
 {
-  "created_at_utc": "2026-06-12T04:51:25.308196+00:00",
+  "created_at_utc": "2026-06-12T05:32:08.354097+00:00",
   "summary": {
     "pass": 8,
     "warn": 1,
@@ -58,9 +58,21 @@
           "delta_avg_td_attempted",
           "delta_avg_sub_attempts",
           "delta_avg_ctrl_sec",
+          "delta_sig_str_landed_per_min",
+          "delta_sig_str_absorbed_per_min",
+          "delta_td_landed_per_15min",
+          "delta_td_attempted_per_15min",
+          "delta_sub_attempts_per_15min",
+          "delta_ctrl_sec_per_min",
           "delta_pre_fight_elo",
+          "delta_time_decayed_elo",
           "delta_elo_expected_win_prob",
           "delta_elo_uncertainty",
+          "delta_glicko_like_rd",
+          "delta_avg_opponent_pre_fight_elo",
+          "delta_recent_3_opponent_pre_fight_elo",
+          "delta_best_win_opponent_pre_fight_elo",
+          "delta_worst_loss_opponent_pre_fight_elo",
           "delta_recent_3_win_rate",
           "delta_recent_5_win_rate"
         ]
@@ -114,22 +126,22 @@
       "status": "pass",
       "details": {
         "primary_model": "xgboost_rating_features",
-        "auc_gap": 0.035532621954741384,
-        "accuracy_gap": 0.02657787703816683,
+        "auc_gap": 0.017888248102669535,
+        "accuracy_gap": 0.0052656425899698656,
         "test_by_source": {
           "sherdog": {
             "rows": 1096,
-            "accuracy": 0.6177007299270073,
-            "log_loss": 0.6504293084144592,
-            "brier_score": 0.2294745296239853,
-            "auc": 0.6542835570469798
+            "accuracy": 0.6240875912408759,
+            "log_loss": 0.6478533148765564,
+            "brier_score": 0.22838810086250305,
+            "auc": 0.6574714765100672
           },
           "ufcstats": {
             "rows": 1206,
-            "accuracy": 0.6442786069651741,
-            "log_loss": 0.6395787000656128,
-            "brier_score": 0.22424058616161346,
-            "auc": 0.6898161790017212
+            "accuracy": 0.6293532338308457,
+            "log_loss": 0.6464237570762634,
+            "brier_score": 0.22741299867630005,
+            "auc": 0.6753597246127367
           }
         }
       }
@@ -145,7 +157,13 @@
           "delta_avg_td_landed": 0.625107,
           "delta_avg_td_attempted": 0.625107,
           "delta_avg_sub_attempts": 0.625107,
-          "delta_avg_ctrl_sec": 0.630523
+          "delta_avg_ctrl_sec": 0.630523,
+          "delta_sig_str_landed_per_min": 0.625107,
+          "delta_sig_str_absorbed_per_min": 0.625107,
+          "delta_td_landed_per_15min": 0.625107,
+          "delta_td_attempted_per_15min": 0.625107,
+          "delta_sub_attempts_per_15min": 0.625107,
+          "delta_ctrl_sec_per_min": 0.630523
         }
       }
     }
@@ -154,7 +172,7 @@
     "rows": 17541,
     "date_min": "1994-03-11",
     "date_max": "2026-06-06",
-    "feature_count": 24,
+    "feature_count": 36,
     "label_balance": {
       "fighter_a_wins": 8303,
       "fighter_b_wins": 9238

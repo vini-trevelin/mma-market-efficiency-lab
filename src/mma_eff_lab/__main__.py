@@ -4,6 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
+import pandas as pd
+
 from mma_eff_lab.audit.warehouse import validate_warehouse
 from mma_eff_lab.download.sherdog import (
     PROMOTION_SETS,
@@ -14,7 +16,13 @@ from mma_eff_lab.download.sherdog import (
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
 from mma_eff_lab.models.benchmark import benchmark_fight_models
+from mma_eff_lab.models.calibrated import (
+    CALIBRATED_CATBOOST_VERSION,
+    train_calibrated_ufc_catboost,
+)
+from mma_eff_lab.models.calibration import evaluate_model_calibration
 from mma_eff_lab.models.dataset import write_model_dataset
+from mma_eff_lab.models.predict import predict_card, predict_fight
 from mma_eff_lab.models.quality import validate_model_quality
 from mma_eff_lab.models.train import train_xgboost_model
 from mma_eff_lab.reports.static import make_reports
@@ -53,6 +61,8 @@ def main() -> None:
     train_model.add_argument("--n-estimators", type=int, default=200)
     train_model.add_argument("--max-depth", type=int, default=3)
     train_model.add_argument("--learning-rate", type=float, default=0.05)
+    train_calibrated = subparsers.add_parser("train-calibrated-ufc-catboost")
+    train_calibrated.add_argument("--output-dir")
     benchmark_models = subparsers.add_parser("benchmark-fight-models")
     benchmark_models.add_argument("--output-path")
     benchmark_models.add_argument("--folds", type=int, default=8)
@@ -60,6 +70,27 @@ def main() -> None:
     quality = subparsers.add_parser("validate-model-quality")
     quality.add_argument("--benchmark-path")
     quality.add_argument("--output-path")
+    calibration = subparsers.add_parser("evaluate-model-calibration")
+    calibration.add_argument("--output-dir")
+    calibration.add_argument("--source", default="ufcstats")
+    calibration.add_argument("--bins", type=int, default=10)
+    predict_fight_parser = subparsers.add_parser("predict-fight")
+    predict_fight_parser.add_argument("--fighter-a", required=True)
+    predict_fight_parser.add_argument("--fighter-b", required=True)
+    predict_fight_parser.add_argument("--event-date", required=True)
+    predict_fight_parser.add_argument(
+        "--model-version",
+        default=CALIBRATED_CATBOOST_VERSION,
+        choices=["xgboost_fight_outcome_v1", CALIBRATED_CATBOOST_VERSION],
+    )
+    predict_card_parser = subparsers.add_parser("predict-card")
+    predict_card_parser.add_argument("--input", required=True)
+    predict_card_parser.add_argument("--output")
+    predict_card_parser.add_argument(
+        "--model-version",
+        default=CALIBRATED_CATBOOST_VERSION,
+        choices=["xgboost_fight_outcome_v1", CALIBRATED_CATBOOST_VERSION],
+    )
     subparsers.add_parser("make-reports")
     subparsers.add_parser("validate-warehouse")
     subparsers.add_parser("apply-identity-overrides")
@@ -105,6 +136,10 @@ def main() -> None:
             max_depth=args.max_depth,
             learning_rate=args.learning_rate,
         )
+    elif args.command == "train-calibrated-ufc-catboost":
+        result = train_calibrated_ufc_catboost(
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+        )
     elif args.command == "benchmark-fight-models":
         result = benchmark_fight_models(
             output_path=Path(args.output_path) if args.output_path else None,
@@ -115,6 +150,25 @@ def main() -> None:
         result = validate_model_quality(
             benchmark_path=Path(args.benchmark_path) if args.benchmark_path else None,
             output_path=Path(args.output_path) if args.output_path else None,
+        )
+    elif args.command == "evaluate-model-calibration":
+        result = evaluate_model_calibration(
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+            source=args.source,
+            bins=args.bins,
+        )
+    elif args.command == "predict-fight":
+        result = predict_fight(
+            args.fighter_a,
+            args.fighter_b,
+            event_date=pd.to_datetime(args.event_date).date(),
+            model_version=args.model_version,
+        )
+    elif args.command == "predict-card":
+        result = predict_card(
+            Path(args.input),
+            output_path=Path(args.output) if args.output else None,
+            model_version=args.model_version,
         )
     elif args.command == "make-reports":
         result = make_reports()

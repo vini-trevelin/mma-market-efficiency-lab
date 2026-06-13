@@ -1,5 +1,75 @@
 # Task Log
 
+# UFC-Focused Probability Improvements
+
+## Plan
+
+- [x] Add richer point-in-time features for UFC probability modeling.
+- [x] Add UFC/source-filtered calibration evaluation with reliability plots.
+- [x] Add future `predict-fight` and `predict-card` commands.
+- [x] Re-run full model/data quality verification after the expanded feature surface.
+- [x] Use live sources to identify the UFC White House card and Polymarket markets.
+
+## Review / Results
+
+- Added point-in-time feature families:
+  - time-decayed Elo;
+  - Glicko-like rating deviation proxy;
+  - opponent-quality Elo features;
+  - normalized per-minute and per-15-minute fight stat rates.
+- Rebuilt model dataset:
+  - training rows: `17,541`;
+  - excluded draw/no-contest rows: `297`;
+  - feature columns: `36`.
+- Expanded raw XGBoost temporal test metrics:
+  - overall accuracy `62.68%`, log loss `0.6471`, AUC `0.6671`;
+  - UFCStats accuracy `62.94%`, log loss `0.6464`, AUC `0.6754`.
+- Expanded benchmark, UFCStats temporal test:
+  - baseline XGBoost AUC `0.6801`;
+  - XGBoost expanded features AUC `0.6754`;
+  - CatBoost expanded features AUC `0.6850`.
+- UFCStats calibration report:
+  - XGBoost raw log loss `0.6464`, Platt `0.6469`, isotonic `0.6476`;
+  - CatBoost raw log loss `0.6430`, Platt `0.6424`, isotonic `0.6404`;
+  - reliability plots written under `data/models/calibration/`.
+- Added calibrated UFC CatBoost serving artifact:
+  - command: `uv run python -m mma_eff_lab train-calibrated-ufc-catboost`;
+  - model artifacts under `data/models/calibrated_ufc_catboost_v1/`;
+  - UFCStats test raw log loss `0.6428`, Brier `0.2257`, AUC `0.6848`;
+  - UFCStats test isotonic log loss `0.6409`, Brier `0.2247`, AUC `0.6826`;
+  - UFCStats test accuracy `63.85%`.
+- Added prediction commands:
+  - `predict-fight`;
+  - `predict-card`.
+- Prediction smoke checks:
+  - ambiguous exact names are rejected with candidate IDs;
+  - `Edgar Chairez` vs `ufcstats:294aa73dbf37d281` produced valid probabilities;
+  - one-row `predict-card` CSV produced valid probabilities.
+- UFC Freedom 250 / UFC White House card checked from live sources:
+  - event date: `2026-06-14`;
+  - seven fights;
+  - card CSV written to `data/upcoming/ufc_freedom_250_card.csv`.
+- UFC Freedom 250 predictions written to
+  `data/predictions/ufc_freedom_250_predictions.csv`.
+- Final card predictions now use `calibrated_ufc_catboost_v1`, not raw XGBoost.
+- Explanation plots written:
+  - `data/predictions/ufc_freedom_250_probabilities.png`;
+  - `data/predictions/ufc_freedom_250_polymarket_edges.png`.
+- Polymarket UFC games page checked for live June 14 markets and visible prices.
+  Comparison artifact written to
+  `data/predictions/ufc_freedom_250_polymarket_comparison.csv`.
+- Current largest model-vs-market no-vig differences:
+  - Steve Garcia over Diego Lopes: `+12.93pp`;
+  - Kyle Daukaus over Bo Nickal: `+12.02pp`;
+  - Derrick Lewis over Josh Hokit: `+11.43pp`;
+  - Justin Gaethje over Ilia Topuria: `+10.74pp`.
+- Verification after expanded features:
+  - `uv run pytest` passed (`59` tests);
+  - `uv run ruff check src tests` passed;
+  - `uv run python -m mma_eff_lab validate-model-quality` passed with `8` pass,
+    `1` warning, `0` fail;
+  - `uv run python -m mma_eff_lab validate-warehouse` passed with known warnings.
+
 # Rating Features for Fight Outcome Model
 
 ## Plan

@@ -4,10 +4,15 @@ from dataclasses import replace
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 import pytest
 
 from mma_eff_lab.config import get_settings
-from mma_eff_lab.features.pit import INITIAL_ELO, build_pit_features
+from mma_eff_lab.features.pit import (
+    INITIAL_ELO,
+    build_future_matchup_features,
+    build_pit_features,
+)
 from mma_eff_lab.warehouse.build import MANUAL_OVERRIDE_TABLE, build_warehouse
 from tests.test_sherdog_parser import (
     SHERDOG_BLUE_ID,
@@ -199,6 +204,27 @@ def test_pit_features_exclude_current_and_same_date_fights(tmp_path: Path) -> No
     assert rows[0][6] is None
     assert rows[1][6] is None
     assert rows[2][6] == pytest.approx(1.0)
+
+
+def test_future_matchup_features_use_prior_history_only(tmp_path: Path) -> None:
+    _write_cached_fixture_tree(tmp_path)
+    settings = replace(get_settings(tmp_path), repo_root=tmp_path)
+    build_warehouse(settings)
+    build_pit_features(settings)
+
+    features = build_future_matchup_features(
+        f"ufcstats:{RED_ID}",
+        f"ufcstats:{BLUE_ID}",
+        pd.to_datetime("2020-03-01").date(),
+        settings,
+    )
+
+    assert features["fighter_a_name"] == "Red Fighter"
+    assert features["fighter_b_name"] == "Blue Fighter"
+    assert features["delta_prior_fights"] == 0.0
+    assert features["delta_prior_wins"] == 3.0
+    assert features["delta_pre_fight_elo"] > 0.0
+    assert features["delta_elo_expected_win_prob"] > 0.0
 
 
 def test_sherdog_history_supplements_linked_ufc_pit_features(tmp_path: Path) -> None:

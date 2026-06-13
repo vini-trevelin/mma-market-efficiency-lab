@@ -16,13 +16,29 @@ from mma_eff_lab.models.train import temporal_split
 
 RATING_FEATURE_COLUMNS = [
     "delta_pre_fight_elo",
+    "delta_time_decayed_elo",
     "delta_elo_expected_win_prob",
     "delta_elo_uncertainty",
+    "delta_glicko_like_rd",
+    "delta_avg_opponent_pre_fight_elo",
+    "delta_recent_3_opponent_pre_fight_elo",
+    "delta_best_win_opponent_pre_fight_elo",
+    "delta_worst_loss_opponent_pre_fight_elo",
     "delta_recent_3_win_rate",
     "delta_recent_5_win_rate",
 ]
+NORMALIZED_STAT_FEATURE_COLUMNS = [
+    "delta_sig_str_landed_per_min",
+    "delta_sig_str_absorbed_per_min",
+    "delta_td_landed_per_15min",
+    "delta_td_attempted_per_15min",
+    "delta_sub_attempts_per_15min",
+    "delta_ctrl_sec_per_min",
+]
 BASELINE_FEATURE_COLUMNS = [
-    feature for feature in FEATURE_COLUMNS if feature not in RATING_FEATURE_COLUMNS
+    feature
+    for feature in FEATURE_COLUMNS
+    if feature not in {*RATING_FEATURE_COLUMNS, *NORMALIZED_STAT_FEATURE_COLUMNS}
 ]
 
 

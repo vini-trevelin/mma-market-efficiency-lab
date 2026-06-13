@@ -1,0 +1,383 @@
+{
+  "created_at_utc": "2026-06-12T05:15:41.627139+00:00",
+  "source": "ufcstats",
+  "bins": 10,
+  "split": {
+    "train_end_date": "2021-09-21",
+    "validation_end_date": "2024-02-09",
+    "test_start_date": "2024-02-10"
+  },
+  "reports": [
+    {
+      "name": "xgboost_rating_features",
+      "model_type": "xgboost",
+      "source": "ufcstats",
+      "rows": 1206,
+      "metrics": {
+        "raw": {
+          "rows": 1206,
+          "accuracy": 0.6293532338308457,
+          "log_loss": 0.6464237570762634,
+          "brier_score": 0.22741299867630005,
+          "auc": 0.6753597246127367
+        },
+        "platt": {
+          "rows": 1206,
+          "accuracy": 0.6359867330016584,
+          "log_loss": 0.6469348669052124,
+          "brier_score": 0.22757019102573395,
+          "auc": 0.6753597246127367
+        },
+        "isotonic": {
+          "rows": 1206,
+          "accuracy": 0.6260364842454395,
+          "log_loss": 0.6476410031318665,
+          "brier_score": 0.22791382670402527,
+          "auc": 0.6730024096385542
+        }
+      },
+      "curves": {
+        "raw": [
+          {
+            "rows": 8,
+            "mean_predicted_probability": 0.155571848154068,
+            "observed_win_rate": 0.125
+          },
+          {
+            "rows": 30,
+            "mean_predicted_probability": 0.22232894599437714,
+            "observed_win_rate": 0.26666666666666666
+          },
+          {
+            "rows": 100,
+            "mean_predicted_probability": 0.3040333092212677,
+            "observed_win_rate": 0.28
+          },
+          {
+            "rows": 186,
+            "mean_predicted_probability": 0.37384524941444397,
+            "observed_win_rate": 0.3279569892473118
+          },
+          {
+            "rows": 238,
+            "mean_predicted_probability": 0.4459776282310486,
+            "observed_win_rate": 0.39915966386554624
+          },
+          {
+            "rows": 265,
+            "mean_predicted_probability": 0.5192034840583801,
+            "observed_win_rate": 0.5169811320754717
+          },
+          {
+            "rows": 182,
+            "mean_predicted_probability": 0.5951339602470398,
+            "observed_win_rate": 0.6153846153846154
+          },
+          {
+            "rows": 135,
+            "mean_predicted_probability": 0.6672642827033997,
+            "observed_win_rate": 0.6888888888888889
+          },
+          {
+            "rows": 50,
+            "mean_predicted_probability": 0.7394384741783142,
+            "observed_win_rate": 0.7
+          },
+          {
+            "rows": 12,
+            "mean_predicted_probability": 0.8125101923942566,
+            "observed_win_rate": 0.9166666666666666
+          }
+        ],
+        "platt": [
+          {
+            "rows": 16,
+            "mean_predicted_probability": 0.20975419878959656,
+            "observed_win_rate": 0.1875
+          },
+          {
+            "rows": 46,
+            "mean_predicted_probability": 0.2658901512622833,
+            "observed_win_rate": 0.30434782608695654
+          },
+          {
+            "rows": 136,
+            "mean_predicted_probability": 0.3259890079498291,
+            "observed_win_rate": 0.27205882352941174
+          },
+          {
+            "rows": 197,
+            "mean_predicted_probability": 0.3872247338294983,
+            "observed_win_rate": 0.34517766497461927
+          },
+          {
+            "rows": 209,
+            "mean_predicted_probability": 0.4500335156917572,
+            "observed_win_rate": 0.4449760765550239
+          },
+          {
+            "rows": 229,
+            "mean_predicted_probability": 0.510566771030426,
+            "observed_win_rate": 0.519650655021834
+          },
+          {
+            "rows": 161,
+            "mean_predicted_probability": 0.5760765075683594,
+            "observed_win_rate": 0.6086956521739131
+          },
+          {
+            "rows": 132,
+            "mean_predicted_probability": 0.6364063024520874,
+            "observed_win_rate": 0.6818181818181818
+          },
+          {
+            "rows": 63,
+            "mean_predicted_probability": 0.6949751377105713,
+            "observed_win_rate": 0.6984126984126984
+          },
+          {
+            "rows": 17,
+            "mean_predicted_probability": 0.7545316815376282,
+            "observed_win_rate": 0.8823529411764706
+          }
+        ],
+        "isotonic": [
+          {
+            "rows": 1,
+            "mean_predicted_probability": 0.0,
+            "observed_win_rate": 0.0
+          },
+          {
+            "rows": 29,
+            "mean_predicted_probability": 0.12752650678157806,
+            "observed_win_rate": 0.1724137931034483
+          },
+          {
+            "rows": 9,
+            "mean_predicted_probability": 0.24146658182144165,
+            "observed_win_rate": 0.4444444444444444
+          },
+          {
+            "rows": 80,
+            "mean_predicted_probability": 0.30015140771865845,
+            "observed_win_rate": 0.2625
+          },
+          {
+            "rows": 376,
+            "mean_predicted_probability": 0.3814505636692047,
+            "observed_win_rate": 0.3537234042553192
+          },
+          {
+            "rows": 159,
+            "mean_predicted_probability": 0.49884113669395447,
+            "observed_win_rate": 0.4779874213836478
+          },
+          {
+            "rows": 370,
+            "mean_predicted_probability": 0.5446702837944031,
+            "observed_win_rate": 0.581081081081081
+          },
+          {
+            "rows": 18,
+            "mean_predicted_probability": 0.6124999523162842,
+            "observed_win_rate": 0.5
+          },
+          {
+            "rows": 123,
+            "mean_predicted_probability": 0.7007161974906921,
+            "observed_win_rate": 0.6910569105691057
+          },
+          {
+            "rows": 41,
+            "mean_predicted_probability": 0.7830609679222107,
+            "observed_win_rate": 0.8048780487804879
+          }
+        ]
+      },
+      "plot_path": "/Users/vinitl/prog/mma-market-efficiency-lab/data/models/calibration/xgboost_rating_features_ufcstats_calibration.png"
+    },
+    {
+      "name": "catboost_rating_features",
+      "model_type": "catboost",
+      "source": "ufcstats",
+      "rows": 1206,
+      "metrics": {
+        "raw": {
+          "rows": 1206,
+          "accuracy": 0.6343283582089553,
+          "log_loss": 0.6429743593189152,
+          "brier_score": 0.22577457743861723,
+          "auc": 0.6844227194492255
+        },
+        "platt": {
+          "rows": 1206,
+          "accuracy": 0.6343283582089553,
+          "log_loss": 0.642375168306147,
+          "brier_score": 0.22548844503541016,
+          "auc": 0.6844227194492255
+        },
+        "isotonic": {
+          "rows": 1206,
+          "accuracy": 0.6359867330016584,
+          "log_loss": 0.640427871608591,
+          "brier_score": 0.2248748685569054,
+          "auc": 0.6815063683304647
+        }
+      },
+      "curves": {
+        "raw": [
+          {
+            "rows": 11,
+            "mean_predicted_probability": 0.22322331758842512,
+            "observed_win_rate": 0.18181818181818182
+          },
+          {
+            "rows": 70,
+            "mean_predicted_probability": 0.2884563926251967,
+            "observed_win_rate": 0.17142857142857143
+          },
+          {
+            "rows": 130,
+            "mean_predicted_probability": 0.3527821940081823,
+            "observed_win_rate": 0.27692307692307694
+          },
+          {
+            "rows": 203,
+            "mean_predicted_probability": 0.41034115173909497,
+            "observed_win_rate": 0.39901477832512317
+          },
+          {
+            "rows": 229,
+            "mean_predicted_probability": 0.47332390571709954,
+            "observed_win_rate": 0.43231441048034935
+          },
+          {
+            "rows": 220,
+            "mean_predicted_probability": 0.5343294573388304,
+            "observed_win_rate": 0.5409090909090909
+          },
+          {
+            "rows": 167,
+            "mean_predicted_probability": 0.593956303899208,
+            "observed_win_rate": 0.6227544910179641
+          },
+          {
+            "rows": 122,
+            "mean_predicted_probability": 0.6568701675309397,
+            "observed_win_rate": 0.6721311475409836
+          },
+          {
+            "rows": 44,
+            "mean_predicted_probability": 0.7194749194284382,
+            "observed_win_rate": 0.8863636363636364
+          },
+          {
+            "rows": 10,
+            "mean_predicted_probability": 0.7680579794372838,
+            "observed_win_rate": 0.7
+          }
+        ],
+        "platt": [
+          {
+            "rows": 24,
+            "mean_predicted_probability": 0.24501081638139868,
+            "observed_win_rate": 0.20833333333333334
+          },
+          {
+            "rows": 85,
+            "mean_predicted_probability": 0.2954455508420496,
+            "observed_win_rate": 0.16470588235294117
+          },
+          {
+            "rows": 152,
+            "mean_predicted_probability": 0.35485782875821165,
+            "observed_win_rate": 0.3092105263157895
+          },
+          {
+            "rows": 180,
+            "mean_predicted_probability": 0.4082542024008199,
+            "observed_win_rate": 0.38333333333333336
+          },
+          {
+            "rows": 208,
+            "mean_predicted_probability": 0.4665635858065543,
+            "observed_win_rate": 0.47596153846153844
+          },
+          {
+            "rows": 190,
+            "mean_predicted_probability": 0.5239350583948182,
+            "observed_win_rate": 0.5105263157894737
+          },
+          {
+            "rows": 163,
+            "mean_predicted_probability": 0.5795949184845053,
+            "observed_win_rate": 0.6380368098159509
+          },
+          {
+            "rows": 124,
+            "mean_predicted_probability": 0.6392896763453815,
+            "observed_win_rate": 0.6290322580645161
+          },
+          {
+            "rows": 65,
+            "mean_predicted_probability": 0.694409133108073,
+            "observed_win_rate": 0.8615384615384616
+          },
+          {
+            "rows": 15,
+            "mean_predicted_probability": 0.7445600003540149,
+            "observed_win_rate": 0.8
+          }
+        ],
+        "isotonic": [
+          {
+            "rows": 10,
+            "mean_predicted_probability": 0.1434927697441602,
+            "observed_win_rate": 0.2
+          },
+          {
+            "rows": 49,
+            "mean_predicted_probability": 0.24196778556155926,
+            "observed_win_rate": 0.14285714285714285
+          },
+          {
+            "rows": 304,
+            "mean_predicted_probability": 0.3550321818495234,
+            "observed_win_rate": 0.32894736842105265
+          },
+          {
+            "rows": 115,
+            "mean_predicted_probability": 0.4154354606179365,
+            "observed_win_rate": 0.4
+          },
+          {
+            "rows": 418,
+            "mean_predicted_probability": 0.5097107722644525,
+            "observed_win_rate": 0.5119617224880383
+          },
+          {
+            "rows": 152,
+            "mean_predicted_probability": 0.6158301912772065,
+            "observed_win_rate": 0.618421052631579
+          },
+          {
+            "rows": 96,
+            "mean_predicted_probability": 0.6821428571428573,
+            "observed_win_rate": 0.6666666666666666
+          },
+          {
+            "rows": 61,
+            "mean_predicted_probability": 0.7746136598595617,
+            "observed_win_rate": 0.8688524590163934
+          },
+          {
+            "rows": 1,
+            "mean_predicted_probability": 1.0,
+            "observed_win_rate": 1.0
+          }
+        ]
+      },
+      "plot_path": "/Users/vinitl/prog/mma-market-efficiency-lab/data/models/calibration/catboost_rating_features_ufcstats_calibration.png"
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 {
-  "model_version": "xgboost_fight_outcome_v1",
-  "created_at_utc": "2026-06-12T05:15:32.917824+00:00",
-  "objective": "binary:logistic",
-  "probability_contract": "fighter_b_win_probability = 1 - fighter_a_win_probability",
+  "model_version": "calibrated_ufc_catboost_v1",
+  "created_at_utc": "2026-06-12T05:28:43.005964+00:00",
+  "model_type": "catboost",
+  "calibration": "isotonic",
+  "calibration_source": "ufcstats",
   "feature_columns": [
     "delta_prior_fights",
     "delta_prior_wins",
@@ -42,6 +43,7 @@
     "delta_recent_5_win_rate"
   ],
   "target_column": "fighter_a_won",
+  "probability_contract": "fighter_b_win_probability = 1 - fighter_a_win_probability",
   "dataset": {
     "input_rows": 17838,
     "training_rows": 17541,
@@ -138,15 +140,7 @@
     "test_start_date": "2024-02-10",
     "train_rows": 12720,
     "validation_rows": 2519,
-    "test_rows": 2302
-  },
-  "hyperparameters": {
-    "n_estimators": 200,
-    "max_depth": 3,
-    "learning_rate": 0.05,
-    "subsample": 0.85,
-    "colsample_bytree": 0.85,
-    "reg_lambda": 1.0,
-    "random_state": 42
+    "test_rows": 2302,
+    "final_train_rows": 15239
   }
 }

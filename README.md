@@ -36,13 +36,30 @@ Build the leak-resistant binary model dataset and train the XGBoost V1 model:
 ```bash
 uv run python -m mma_eff_lab build-model-dataset
 uv run python -m mma_eff_lab train-xgboost-model
+uv run python -m mma_eff_lab train-calibrated-ufc-catboost
 ```
 
 Run the fight-outcome model benchmark suite:
 
 ```bash
 uv run python -m mma_eff_lab benchmark-fight-models
+uv run python -m mma_eff_lab evaluate-model-calibration --source ufcstats
 uv run python -m mma_eff_lab validate-model-quality
+```
+
+Predict a future fight or card from current warehouse history:
+
+```bash
+uv run python -m mma_eff_lab predict-fight \
+  --fighter-a "Fighter A" \
+  --fighter-b "Fighter B" \
+  --event-date YYYY-MM-DD \
+  --model-version calibrated_ufc_catboost_v1
+
+uv run python -m mma_eff_lab predict-card \
+  --input data/upcoming/card.csv \
+  --output data/predictions/card_predictions.csv \
+  --model-version calibrated_ufc_catboost_v1
 ```
 
 On macOS, XGBoost requires OpenMP at runtime:
@@ -73,11 +90,19 @@ uv run python -m mma_eff_lab apply-identity-overrides
   dataset for model training.
 - `train-xgboost-model`: trains the XGBoost fight outcome model and writes model,
   metadata, and metrics artifacts under `data/models/`.
+- `train-calibrated-ufc-catboost`: trains the UFC-serving CatBoost model, fits
+  isotonic calibration from validation probabilities, and writes artifacts under
+  `data/models/calibrated_ufc_catboost_v1/`.
 - `benchmark-fight-models`: compares baseline XGBoost, XGBoost with rating
   features, and CatBoost with rating features using temporal split and
   walk-forward evaluation.
+- `evaluate-model-calibration`: writes UFC/source-filtered raw, Platt, and
+  isotonic calibration metrics plus reliability plots.
 - `validate-model-quality`: writes leakage, temporal-split, source-gap, label
   balance, and missingness checks for model/data quality.
+- `predict-fight`: predicts one future matchup from current warehouse history.
+- `predict-card`: predicts each row in a card CSV with columns
+  `event_date,fighter_a,fighter_b`.
 - `validate-warehouse`: rebuilds derived audit and analysis tables.
 - `apply-identity-overrides`: reruns warehouse, features, and audit with current
   manual identity review decisions.

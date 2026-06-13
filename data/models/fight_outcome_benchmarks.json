@@ -1,5 +1,5 @@
 {
-  "created_at_utc": "2026-06-12T04:51:25.256303+00:00",
+  "created_at_utc": "2026-06-12T05:15:40.481960+00:00",
   "dataset": {
     "input_rows": 17838,
     "training_rows": 17541,
@@ -25,9 +25,21 @@
       "delta_avg_td_attempted",
       "delta_avg_sub_attempts",
       "delta_avg_ctrl_sec",
+      "delta_sig_str_landed_per_min",
+      "delta_sig_str_absorbed_per_min",
+      "delta_td_landed_per_15min",
+      "delta_td_attempted_per_15min",
+      "delta_sub_attempts_per_15min",
+      "delta_ctrl_sec_per_min",
       "delta_pre_fight_elo",
+      "delta_time_decayed_elo",
       "delta_elo_expected_win_prob",
       "delta_elo_uncertainty",
+      "delta_glicko_like_rd",
+      "delta_avg_opponent_pre_fight_elo",
+      "delta_recent_3_opponent_pre_fight_elo",
+      "delta_best_win_opponent_pre_fight_elo",
+      "delta_worst_loss_opponent_pre_fight_elo",
       "delta_recent_3_win_rate",
       "delta_recent_5_win_rate"
     ],
@@ -57,9 +69,21 @@
       "delta_avg_td_attempted": 0.625107,
       "delta_avg_sub_attempts": 0.625107,
       "delta_avg_ctrl_sec": 0.630523,
+      "delta_sig_str_landed_per_min": 0.625107,
+      "delta_sig_str_absorbed_per_min": 0.625107,
+      "delta_td_landed_per_15min": 0.625107,
+      "delta_td_attempted_per_15min": 0.625107,
+      "delta_sub_attempts_per_15min": 0.625107,
+      "delta_ctrl_sec_per_min": 0.630523,
       "delta_pre_fight_elo": 0.0,
+      "delta_time_decayed_elo": 0.0,
       "delta_elo_expected_win_prob": 0.0,
       "delta_elo_uncertainty": 0.0,
+      "delta_glicko_like_rd": 0.0,
+      "delta_avg_opponent_pre_fight_elo": 0.356764,
+      "delta_recent_3_opponent_pre_fight_elo": 0.356764,
+      "delta_best_win_opponent_pre_fight_elo": 0.46702,
+      "delta_worst_loss_opponent_pre_fight_elo": 0.592897,
       "delta_recent_3_win_rate": 0.3599,
       "delta_recent_5_win_rate": 0.3599
     },
@@ -236,7 +260,7 @@
     {
       "name": "xgboost_rating_features",
       "model_type": "xgboost",
-      "feature_count": 24,
+      "feature_count": 36,
       "feature_columns": [
         "delta_prior_fights",
         "delta_prior_wins",
@@ -257,9 +281,21 @@
         "delta_avg_td_attempted",
         "delta_avg_sub_attempts",
         "delta_avg_ctrl_sec",
+        "delta_sig_str_landed_per_min",
+        "delta_sig_str_absorbed_per_min",
+        "delta_td_landed_per_15min",
+        "delta_td_attempted_per_15min",
+        "delta_sub_attempts_per_15min",
+        "delta_ctrl_sec_per_min",
         "delta_pre_fight_elo",
+        "delta_time_decayed_elo",
         "delta_elo_expected_win_prob",
         "delta_elo_uncertainty",
+        "delta_glicko_like_rd",
+        "delta_avg_opponent_pre_fight_elo",
+        "delta_recent_3_opponent_pre_fight_elo",
+        "delta_best_win_opponent_pre_fight_elo",
+        "delta_worst_loss_opponent_pre_fight_elo",
         "delta_recent_3_win_rate",
         "delta_recent_5_win_rate"
       ],
@@ -271,42 +307,42 @@
         },
         "validation": {
           "rows": 2519,
-          "accuracy": 0.628423977768956,
-          "log_loss": 0.6499637961387634,
-          "brier_score": 0.22910359501838684,
-          "auc": 0.6614920545223717
+          "accuracy": 0.6169114728066694,
+          "log_loss": 0.6502260565757751,
+          "brier_score": 0.22940170764923096,
+          "auc": 0.6591806946813066
         },
         "test": {
           "rows": 2302,
-          "accuracy": 0.631624674196351,
-          "log_loss": 0.6447447538375854,
-          "brier_score": 0.2267325073480606,
-          "auc": 0.6736512814218643
+          "accuracy": 0.6268462206776716,
+          "log_loss": 0.6471043825149536,
+          "brier_score": 0.22787724435329437,
+          "auc": 0.6671261708264483
         },
         "test_by_source": {
           "sherdog": {
             "rows": 1096,
-            "accuracy": 0.6177007299270073,
-            "log_loss": 0.6504293084144592,
-            "brier_score": 0.2294745296239853,
-            "auc": 0.6542835570469798
+            "accuracy": 0.6240875912408759,
+            "log_loss": 0.6478533148765564,
+            "brier_score": 0.22838810086250305,
+            "auc": 0.6574714765100672
           },
           "ufcstats": {
             "rows": 1206,
-            "accuracy": 0.6442786069651741,
-            "log_loss": 0.6395787000656128,
-            "brier_score": 0.22424058616161346,
-            "auc": 0.6898161790017212
+            "accuracy": 0.6293532338308457,
+            "log_loss": 0.6464237570762634,
+            "brier_score": 0.22741299867630005,
+            "auc": 0.6753597246127367
           }
         }
       },
       "walk_forward": {
         "summary": {
           "rows": 8608,
-          "accuracy": 0.6270910780669146,
-          "log_loss": 0.6496828601608675,
-          "brier_score": 0.2290160813806813,
-          "auc": 0.6640143957822815
+          "accuracy": 0.6225604089219331,
+          "log_loss": 0.6496985198764967,
+          "brier_score": 0.229058044960119,
+          "auc": 0.6631976207241802
         },
         "folds": [
           {
@@ -316,9 +352,9 @@
             "test_end_date": "2019-05-03",
             "rows": 1311,
             "accuracy": 0.6025934401220442,
-            "log_loss": 0.6482821106910706,
-            "brier_score": 0.2287243902683258,
-            "auc": 0.6604164917876829
+            "log_loss": 0.6555883288383484,
+            "brier_score": 0.23175020515918732,
+            "auc": 0.652391878153651
           },
           {
             "fold": 2,
@@ -326,10 +362,10 @@
             "test_start_date": "2019-05-04",
             "test_end_date": "2020-06-20",
             "rows": 1281,
-            "accuracy": 0.6221701795472288,
-            "log_loss": 0.6510329246520996,
-            "brier_score": 0.22970688343048096,
-            "auc": 0.6587322990624878
+            "accuracy": 0.6206088992974239,
+            "log_loss": 0.6513267159461975,
+            "brier_score": 0.22995306551456451,
+            "auc": 0.6575456988192838
           },
           {
             "fold": 3,
@@ -337,10 +373,10 @@
             "test_start_date": "2020-06-21",
             "test_end_date": "2021-07-17",
             "rows": 1007,
-            "accuracy": 0.6246276067527309,
-            "log_loss": 0.6569135189056396,
-            "brier_score": 0.23217245936393738,
-            "auc": 0.6564220907297831
+            "accuracy": 0.6186693147964251,
+            "log_loss": 0.6546373963356018,
+            "brier_score": 0.23129963874816895,
+            "auc": 0.660207100591716
           },
           {
             "fold": 4,
@@ -348,10 +384,10 @@
             "test_start_date": "2021-07-24",
             "test_end_date": "2022-07-26",
             "rows": 1127,
-            "accuracy": 0.6157941437444543,
-            "log_loss": 0.6586484313011169,
-            "brier_score": 0.23288394510746002,
-            "auc": 0.6488498655276065
+            "accuracy": 0.6193433895297249,
+            "log_loss": 0.6543014645576477,
+            "brier_score": 0.23113802075386047,
+            "auc": 0.6541164372725835
           },
           {
             "fold": 5,
@@ -359,10 +395,10 @@
             "test_start_date": "2022-07-30",
             "test_end_date": "2023-08-04",
             "rows": 1108,
-            "accuracy": 0.6534296028880866,
-            "log_loss": 0.6360523104667664,
-            "brier_score": 0.22271469235420227,
-            "auc": 0.6869743690786989
+            "accuracy": 0.6335740072202166,
+            "log_loss": 0.6365658640861511,
+            "brier_score": 0.22307999432086945,
+            "auc": 0.6828793327093903
           },
           {
             "fold": 6,
@@ -370,10 +406,10 @@
             "test_start_date": "2023-08-05",
             "test_end_date": "2024-07-19",
             "rows": 939,
-            "accuracy": 0.630457933972311,
-            "log_loss": 0.6550887227058411,
-            "brier_score": 0.2314196228981018,
-            "auc": 0.6552757302757302
+            "accuracy": 0.6357827476038339,
+            "log_loss": 0.6535293459892273,
+            "brier_score": 0.23067538440227509,
+            "auc": 0.6584743834743835
           },
           {
             "fold": 7,
@@ -381,10 +417,10 @@
             "test_start_date": "2024-07-20",
             "test_end_date": "2025-07-05",
             "rows": 949,
-            "accuracy": 0.642781875658588,
-            "log_loss": 0.646030068397522,
-            "brier_score": 0.2274051308631897,
-            "auc": 0.6718906428775744
+            "accuracy": 0.6280295047418335,
+            "log_loss": 0.6427980661392212,
+            "brier_score": 0.2260027378797531,
+            "auc": 0.6746504934210527
           },
           {
             "fold": 8,
@@ -392,10 +428,10 @@
             "test_start_date": "2025-07-11",
             "test_end_date": "2026-06-06",
             "rows": 886,
-            "accuracy": 0.6343115124153499,
-            "log_loss": 0.6454104781150818,
-            "brier_score": 0.22700004279613495,
-            "auc": 0.6742420759584195
+            "accuracy": 0.6297968397291196,
+            "log_loss": 0.6469152569770813,
+            "brier_score": 0.22762134671211243,
+            "auc": 0.6706535897632364
           }
         ]
       }
@@ -403,7 +439,7 @@
     {
       "name": "catboost_rating_features",
       "model_type": "catboost",
-      "feature_count": 24,
+      "feature_count": 36,
       "feature_columns": [
         "delta_prior_fights",
         "delta_prior_wins",
@@ -424,9 +460,21 @@
         "delta_avg_td_attempted",
         "delta_avg_sub_attempts",
         "delta_avg_ctrl_sec",
+        "delta_sig_str_landed_per_min",
+        "delta_sig_str_absorbed_per_min",
+        "delta_td_landed_per_15min",
+        "delta_td_attempted_per_15min",
+        "delta_sub_attempts_per_15min",
+        "delta_ctrl_sec_per_min",
         "delta_pre_fight_elo",
+        "delta_time_decayed_elo",
         "delta_elo_expected_win_prob",
         "delta_elo_uncertainty",
+        "delta_glicko_like_rd",
+        "delta_avg_opponent_pre_fight_elo",
+        "delta_recent_3_opponent_pre_fight_elo",
+        "delta_best_win_opponent_pre_fight_elo",
+        "delta_worst_loss_opponent_pre_fight_elo",
         "delta_recent_3_win_rate",
         "delta_recent_5_win_rate"
       ],
@@ -438,42 +486,42 @@
         },
         "validation": {
           "rows": 2519,
-          "accuracy": 0.6157205240174672,
-          "log_loss": 0.6501042430482051,
-          "brier_score": 0.2291982410708969,
-          "auc": 0.6616054527439835
+          "accuracy": 0.6216752679634776,
+          "log_loss": 0.6497684007011886,
+          "brier_score": 0.22915638726601642,
+          "auc": 0.6607055523316956
         },
         "test": {
           "rows": 2302,
-          "accuracy": 0.6329278887923545,
-          "log_loss": 0.6477897093870238,
-          "brier_score": 0.2281407327766283,
-          "auc": 0.6694028567294061
+          "accuracy": 0.629887054735013,
+          "log_loss": 0.6458553864218839,
+          "brier_score": 0.22721923360554208,
+          "auc": 0.6723811104014619
         },
         "test_by_source": {
           "sherdog": {
             "rows": 1096,
-            "accuracy": 0.6213503649635036,
-            "log_loss": 0.6508043252174972,
-            "brier_score": 0.22969414866980536,
-            "auc": 0.6535687919463087
+            "accuracy": 0.6268248175182481,
+            "log_loss": 0.6490725171672588,
+            "brier_score": 0.22884564249202885,
+            "auc": 0.6583540268456376
           },
           "ufcstats": {
             "rows": 1206,
-            "accuracy": 0.6434494195688225,
-            "log_loss": 0.6450500585162122,
-            "brier_score": 0.22672900490024184,
-            "auc": 0.6840839931153184
+            "accuracy": 0.632669983416252,
+            "log_loss": 0.6429316921458219,
+            "brier_score": 0.2257411704715542,
+            "auc": 0.6849707401032702
           }
         }
       },
       "walk_forward": {
         "summary": {
           "rows": 8608,
-          "accuracy": 0.620817843866171,
-          "log_loss": 0.6513263480348059,
-          "brier_score": 0.22984266423525807,
-          "auc": 0.6600881009828223
+          "accuracy": 0.6207016728624535,
+          "log_loss": 0.6499433038688021,
+          "brier_score": 0.22920977003571283,
+          "auc": 0.662179279145904
         },
         "folds": [
           {
@@ -482,10 +530,10 @@
             "test_start_date": "2018-04-14",
             "test_end_date": "2019-05-03",
             "rows": 1311,
-            "accuracy": 0.6033562166285278,
-            "log_loss": 0.652430582990843,
-            "brier_score": 0.2305209121893426,
-            "auc": 0.6557868621580534
+            "accuracy": 0.5949656750572082,
+            "log_loss": 0.6524664332529849,
+            "brier_score": 0.23045354308756485,
+            "auc": 0.6563278211477657
           },
           {
             "fold": 2,
@@ -493,10 +541,10 @@
             "test_start_date": "2019-05-04",
             "test_end_date": "2020-06-20",
             "rows": 1281,
-            "accuracy": 0.6143637782982045,
-            "log_loss": 0.6543030522760982,
-            "brier_score": 0.2313574852809183,
-            "auc": 0.6500730592711725
+            "accuracy": 0.6198282591725215,
+            "log_loss": 0.6508889040153837,
+            "brier_score": 0.2297644291693077,
+            "auc": 0.6568334935080218
           },
           {
             "fold": 3,
@@ -504,10 +552,10 @@
             "test_start_date": "2020-06-21",
             "test_end_date": "2021-07-17",
             "rows": 1007,
-            "accuracy": 0.6166832174776564,
-            "log_loss": 0.6569730724947834,
-            "brier_score": 0.2324610097683959,
-            "auc": 0.654207100591716
+            "accuracy": 0.6236345580933466,
+            "log_loss": 0.6541537306521195,
+            "brier_score": 0.23117536862840973,
+            "auc": 0.6596173570019723
           },
           {
             "fold": 4,
@@ -515,10 +563,10 @@
             "test_start_date": "2021-07-24",
             "test_end_date": "2022-07-26",
             "rows": 1127,
-            "accuracy": 0.6193433895297249,
-            "log_loss": 0.6583671671798754,
-            "brier_score": 0.23296753545172408,
-            "auc": 0.6466587565258661
+            "accuracy": 0.616681455190772,
+            "log_loss": 0.6566920781039584,
+            "brier_score": 0.2323183783360424,
+            "auc": 0.6482075620946053
           },
           {
             "fold": 5,
@@ -526,10 +574,10 @@
             "test_start_date": "2022-07-30",
             "test_end_date": "2023-08-04",
             "rows": 1108,
-            "accuracy": 0.6335740072202166,
-            "log_loss": 0.6371839434904993,
-            "brier_score": 0.22324015919684032,
-            "auc": 0.684759371459534
+            "accuracy": 0.6308664259927798,
+            "log_loss": 0.6402568958121494,
+            "brier_score": 0.22472491156980187,
+            "auc": 0.6774280413115938
           },
           {
             "fold": 6,
@@ -537,10 +585,10 @@
             "test_start_date": "2023-08-05",
             "test_end_date": "2024-07-19",
             "rows": 939,
-            "accuracy": 0.6198083067092651,
-            "log_loss": 0.6561033921546833,
-            "brier_score": 0.23209731458214242,
-            "auc": 0.6499499499499499
+            "accuracy": 0.6230031948881789,
+            "log_loss": 0.6547202847039739,
+            "brier_score": 0.231308423574098,
+            "auc": 0.6543156793156792
           },
           {
             "fold": 7,
@@ -548,10 +596,10 @@
             "test_start_date": "2024-07-20",
             "test_end_date": "2025-07-05",
             "rows": 949,
-            "accuracy": 0.6322444678609063,
-            "log_loss": 0.6476405793679512,
-            "brier_score": 0.2281173076378852,
-            "auc": 0.6673028103546911
+            "accuracy": 0.6301369863013698,
+            "log_loss": 0.6413209175727163,
+            "brier_score": 0.22523821053965665,
+            "auc": 0.6773544765446224
           },
           {
             "fold": 8,
@@ -559,10 +607,10 @@
             "test_start_date": "2025-07-11",
             "test_end_date": "2026-06-06",
             "rows": 886,
-            "accuracy": 0.6354401805869074,
-            "log_loss": 0.6465857943138367,
-            "brier_score": 0.22741348779917092,
-            "auc": 0.6739074911245626
+            "accuracy": 0.636568848758465,
+            "log_loss": 0.6477589866828813,
+            "brier_score": 0.2280175954431764,
+            "auc": 0.6707276581615713
           }
         ]
       }
