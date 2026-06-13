@@ -9,6 +9,7 @@ import duckdb
 
 from mma_eff_lab.config import Settings, get_settings
 from mma_eff_lab.models.benchmark import make_walk_forward_folds
+from mma_eff_lab.models.calibrated import CALIBRATED_CATBOOST_VERSION
 from mma_eff_lab.models.dataset import (
     FEATURE_COLUMNS,
     TARGET_COLUMN,
@@ -26,6 +27,8 @@ FORBIDDEN_FEATURE_TOKENS = [
     "source",
     "promotion",
 ]
+
+CALIBRATED_METRIC_DEGRADATION_THRESHOLD = 0.03
 
 
 def validate_model_quality(
@@ -48,6 +51,7 @@ def validate_model_quality(
         _prior_count_leakage_check(settings),
         _source_gap_check(benchmark),
         _missingness_check(dataset.metadata),
+        _serving_model_artifact_check(settings),
     ]
     summary = _summary(checks)
     result = {
@@ -244,6 +248,106 @@ def _missingness_check(metadata: dict[str, Any]) -> dict[str, Any]:
         "name": "high_feature_missingness",
         "status": "warn" if high_missing else "pass",
         "details": {"threshold": 0.6, "features": high_missing},
+    }
+
+
+def _serving_model_artifact_check(settings: Settings) -> dict[str, Any]:
+    model_dir = settings.data_dir / "models" / CALIBRATED_CATBOOST_VERSION
+    required_files = ["model.cbm", "isotonic_calibrator.pkl", "metadata.json", "metrics.json"]
+    missing = [f for f in required_files if not (model_dir / f).exists()]
+    if missing:
+        return {
+            "name": "serving_model_artifact",
+            "status": "fail",
+            "details": {
+                "model_dir": str(model_dir),
+                "model_version": CALIBRATED_CATBOOST_VERSION,
+                "missing_files": missing,
+            },
+        }
+    try:
+        metadata = json.loads((model_dir / "metadata.json").read_text(encoding="utf-8"))
+        metrics = json.loads((model_dir / "metrics.json").read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "name": "serving_model_artifact",
+            "status": "fail",
+            "details": {
+                "model_dir": str(model_dir),
+                "model_version": CALIBRATED_CATBOOST_VERSION,
+                "error": str(exc),
+            },
+        }
+    stored_features = metadata.get("feature_columns", [])
+    if stored_features != FEATURE_COLUMNS:
+        return {
+            "name": "serving_model_artifact",
+            "status": "fail",
+            "details": {
+                "model_version": CALIBRATED_CATBOOST_VERSION,
+                "feature_mismatch": True,
+                "expected_count": len(FEATURE_COLUMNS),
+                "stored_count": len(stored_features),
+                "extra_in_stored": [f for f in stored_features if f not in FEATURE_COLUMNS],
+                "missing_from_stored": [f for f in FEATURE_COLUMNS if f not in stored_features],
+            },
+        }
+    metric_source = "single_split"
+    degraded = False
+    degradation_details: dict[str, Any] = {}
+    for key in ("ufcstats_test_raw", "ufcstats_test_isotonic"):
+        entry = metrics.get(key)
+        if not entry:
+            continue
+        if not all(k in entry for k in ("log_loss", "brier_score", "rows")):
+            continue
+        if entry["rows"] <= 0:
+            degraded = True
+            degradation_details[f"{key}_rows"] = entry["rows"]
+        for metric_name in ("log_loss", "brier_score"):
+            val = entry.get(metric_name)
+            if val is not None and not isinstance(val, (int, float)):
+                degraded = True
+                degradation_details[f"{key}_{metric_name}_not_finite"] = True
+                continue
+            if val is not None and not isinstance(val, bool):
+                import math
+
+                if math.isnan(val) or math.isinf(val):
+                    degraded = True
+                    degradation_details[f"{key}_{metric_name}_not_finite"] = True
+    raw_log_loss = metrics.get("ufcstats_test_raw", {}).get("log_loss")
+    isotonic_log_loss = metrics.get("ufcstats_test_isotonic", {}).get("log_loss")
+    if raw_log_loss is not None and isotonic_log_loss is not None:
+        if isotonic_log_loss - raw_log_loss > CALIBRATED_METRIC_DEGRADATION_THRESHOLD:
+            degraded = True
+            degradation_details["calibrated_log_loss_degradation"] = (
+                isotonic_log_loss - raw_log_loss
+            )
+    walkforward_path = (
+        settings.data_dir
+        / "models"
+        / "calibrated_walkforward"
+        / "calibrated_walkforward_report.json"
+    )
+    if walkforward_path.exists():
+        metric_source = "calibrated_walkforward"
+    else:
+        metric_source = "single_split"
+    status = "pass"
+    if degraded:
+        status = "warn"
+    return {
+        "name": "serving_model_artifact",
+        "status": status,
+        "details": {
+            "model_version": CALIBRATED_CATBOOST_VERSION,
+            "files_checked": required_files,
+            "feature_column_count": len(stored_features),
+            "metric_source": metric_source,
+            "calibrated_walkforward_available": walkforward_path.exists(),
+            **degradation_details,
+        },
     }
 
 
