@@ -184,6 +184,39 @@ Identity linking is intentionally conservative:
 
 Odds are out of scope for the current MVP.
 
+## Artifact And Data Version Policy
+
+Git tracks source code, tests, documentation, plans, tiny hand-written fixtures,
+and stable metadata examples. Git does not track generated model binaries,
+calibrators, prediction CSVs, generated plots, raw HTML caches, DuckDB files,
+or local reports. These are all reproducible from source code and the raw cache.
+
+Generated artifacts are recreated by the update playbook commands above. If a
+generated metric report is important for portfolio documentation, keep a small
+curated copy under `docs/` or a future `reports/` path, not under live
+`data/models/`.
+
+Specific ignored paths:
+
+- `data/models/` — trained model files, calibrators, benchmarks, quality reports
+- `data/predictions/` — fight prediction CSVs and plots
+- `data/upcoming/` — upcoming card CSVs
+
+These are in `.gitignore` and should not be committed. If previously tracked
+files exist, they can be removed from the Git index with `git rm --cached`
+without deleting local copies.
+
+To regenerate all model artifacts from scratch after a warehouse rebuild:
+
+```bash
+uv run python -m mma_eff_lab build-model-dataset
+uv run python -m mma_eff_lab train-xgboost-model
+uv run python -m mma_eff_lab train-calibrated-ufc-catboost
+uv run python -m mma_eff_lab benchmark-fight-models
+uv run python -m mma_eff_lab evaluate-model-calibration --source ufcstats
+uv run python -m mma_eff_lab validate-model-quality
+```
+
 ## Quant Engineering Guardrails
 
 Always check for:
