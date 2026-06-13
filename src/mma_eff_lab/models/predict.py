@@ -62,6 +62,26 @@ def predict_fight_probability(
     )
 
 
+def compute_swapped_probability_gap(
+    model: Any,
+    delta_features: dict[str, float | None],
+    model_version: str = MODEL_VERSION,
+) -> float:
+    swapped_features = {
+        feature: (-value if value is not None else None)
+        for feature, value in delta_features.items()
+        if feature in FEATURE_COLUMNS
+    }
+    original = predict_fight_probability(model, delta_features, model_version)
+    swapped_prediction = predict_fight_probability(model, swapped_features, model_version)
+    gap = abs(
+        original.fighter_a_win_probability
+        + swapped_prediction.fighter_a_win_probability
+        - 1.0
+    )
+    return float(gap)
+
+
 def predict_fight(
     fighter_a: str,
     fighter_b: str,

@@ -15,7 +15,7 @@ from mma_eff_lab.models.dataset import (
     build_model_dataset,
     build_model_dataset_from_matchups,
 )
-from mma_eff_lab.models.predict import predict_fight_probability
+from mma_eff_lab.models.predict import compute_swapped_probability_gap, predict_fight_probability
 from mma_eff_lab.models.train import temporal_split
 from mma_eff_lab.warehouse.build import build_warehouse
 from tests.test_warehouse_and_pit import _write_cached_fixture_tree, _write_cached_sherdog_tree
@@ -156,3 +156,57 @@ def test_prediction_probability_contract() -> None:
     assert prediction.fighter_b_win_probability == 0.35
     assert prediction.fighter_a_win_probability + prediction.fighter_b_win_probability == 1.0
     assert prediction.feature_coverage["present_count"] == len(FEATURE_COLUMNS)
+
+
+class _SymmetricModel:
+    def predict_proba(self, frame: pd.DataFrame) -> np.ndarray:
+        n = len(frame)
+        probs = np.full((n, 2), 0.5)
+        for i in range(n):
+            row_sum = float(frame.iloc[i].sum())
+            p = 1.0 / (1.0 + np.exp(-row_sum))
+            probs[i, 1] = p
+            probs[i, 0] = 1.0 - p
+        return probs
+
+
+class _AsymmetricModel:
+    def predict_proba(self, frame: pd.DataFrame) -> np.ndarray:
+        n = len(frame)
+        probs = np.full((n, 2), 0.5)
+        for i in range(n):
+            p = 0.55 if i % 2 == 0 else 0.45
+            probs[i, 1] = p
+            probs[i, 0] = 1.0 - p
+        return probs
+
+
+def test_prediction_probability_sums_to_one() -> None:
+    features = {f"delta_{feature}": 1.0 for feature in NUMERIC_FEATURES}
+
+    prediction = predict_fight_probability(_AsymmetricModel(), features, model_version="test")
+
+    assert (
+        abs(
+            prediction.fighter_a_win_probability
+            + prediction.fighter_b_win_probability
+            - 1.0
+        )
+        < 1e-10
+    )
+
+
+def test_swapped_probability_gap_measures_asymmetry() -> None:
+    features = {f"delta_{feature}": 1.0 for feature in NUMERIC_FEATURES}
+
+    gap = compute_swapped_probability_gap(_AsymmetricModel(), features, model_version="test")
+
+    assert gap > 0.0
+
+
+def test_symmetric_model_has_small_gap() -> None:
+    features = {f"delta_{feature}": 1.0 for feature in NUMERIC_FEATURES}
+
+    gap = compute_swapped_probability_gap(_SymmetricModel(), features, model_version="test")
+
+    assert gap < 0.1
