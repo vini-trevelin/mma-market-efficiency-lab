@@ -41,6 +41,83 @@ BASELINE_FEATURE_COLUMNS = [
     if feature not in {*RATING_FEATURE_COLUMNS, *NORMALIZED_STAT_FEATURE_COLUMNS}
 ]
 
+FEATURE_GROUPS: dict[str, list[str]] = {
+    "record": [
+        feature
+        for feature in FEATURE_COLUMNS
+        if any(
+            feature.endswith(suffix)
+            for suffix in (
+                "prior_fights",
+                "prior_wins",
+                "prior_losses",
+                "prior_draws",
+                "prior_nc",
+            )
+        )
+    ],
+    "activity_bio": [
+        feature
+        for feature in FEATURE_COLUMNS
+        if any(
+            feature.endswith(suffix)
+            for suffix in (
+                "days_since_last_fight",
+                "age_years",
+                "height_in",
+                "reach_in",
+            )
+        )
+    ],
+    "win_method": [
+        feature
+        for feature in FEATURE_COLUMNS
+        if any(
+            feature.endswith(suffix)
+            for suffix in (
+                "wins_by_ko_tko",
+                "wins_by_sub",
+                "wins_by_dec",
+            )
+        )
+    ],
+    "historical_averages": [
+        feature
+        for feature in FEATURE_COLUMNS
+        if any(
+            feature.endswith(suffix)
+            for suffix in (
+                "avg_fight_time_sec",
+                "avg_sig_str_landed",
+                "avg_sig_str_absorbed",
+                "avg_td_landed",
+                "avg_td_attempted",
+                "avg_sub_attempts",
+                "avg_ctrl_sec",
+            )
+        )
+    ],
+    "ufcstats_rates": NORMALIZED_STAT_FEATURE_COLUMNS,
+    "rating": RATING_FEATURE_COLUMNS,
+}
+
+ABLATION_SPECS: list[dict[str, Any]] = [
+    {"name": "all_features", "features": FEATURE_COLUMNS},
+    {
+        "name": "no_rating",
+        "features": BASELINE_FEATURE_COLUMNS + NORMALIZED_STAT_FEATURE_COLUMNS,
+    },
+    {
+        "name": "no_ufcstats_rates",
+        "features": BASELINE_FEATURE_COLUMNS + RATING_FEATURE_COLUMNS,
+    },
+    {"name": "rating_only", "features": RATING_FEATURE_COLUMNS},
+    {
+        "name": "record_and_activity",
+        "features": FEATURE_GROUPS["record"] + FEATURE_GROUPS["activity_bio"],
+    },
+]
+
 
 @dataclass(frozen=True)
 class BenchmarkSpec:
@@ -298,3 +375,118 @@ def _feature_matrix(frame: pd.DataFrame, features: list[str]) -> pd.DataFrame:
 
 def _target_vector(frame: pd.DataFrame) -> pd.Series:
     return frame[TARGET_COLUMN].astype(int)
+
+
+def benchmark_ablation(
+    settings: Settings | None = None,
+    output_path: Path | None = None,
+    folds: int = 8,
+    initial_train_fraction: float = 0.5,
+) -> dict[str, Any]:
+    settings = settings or get_settings()
+    dataset = build_model_dataset(settings)
+
+    covered = set()
+    for group_name, group_features in FEATURE_GROUPS.items():
+        for f in group_features:
+            assert f in FEATURE_COLUMNS, (
+                f"Feature {f} in group {group_name} not in FEATURE_COLUMNS"
+            )
+            covered.add(f)
+    assert covered == set(FEATURE_COLUMNS), (
+        f"Feature groups cover {len(covered)} features "
+        f"but FEATURE_COLUMNS has {len(FEATURE_COLUMNS)}"
+    )
+    assert len(covered) == len(FEATURE_COLUMNS), "Feature groups have duplicate entries"
+
+    results = []
+    for spec in ABLATION_SPECS:
+        ablation_benchmark = BenchmarkSpec(
+            name=spec["name"],
+            model_type="xgboost",
+            feature_columns=spec["features"],
+        )
+        result = _run_benchmark(
+            ablation_benchmark, dataset.frame, folds, initial_train_fraction
+        )
+        result["feature_count"] = len(spec["features"])
+        results.append(result)
+
+    baseline_all = next(r for r in results if r["name"] == "all_features")
+    baseline_wf = baseline_all["walk_forward"]["summary"]
+
+    summary_rows = []
+    for result in results:
+        wf = result["walk_forward"]["summary"]
+        delta_log_loss = None
+        delta_brier = None
+        if wf.get("log_loss") is not None and baseline_wf.get("log_loss") is not None:
+            delta_log_loss = round(wf["log_loss"] - baseline_wf["log_loss"], 6)
+        if wf.get("brier_score") is not None and baseline_wf.get("brier_score") is not None:
+            delta_brier = round(wf["brier_score"] - baseline_wf["brier_score"], 6)
+        summary_rows.append({
+            "name": result["name"],
+            "feature_count": result["feature_count"],
+            "walk_forward_log_loss": wf.get("log_loss"),
+            "walk_forward_brier_score": wf.get("brier_score"),
+            "walk_forward_auc": wf.get("auc"),
+            "walk_forward_accuracy": wf.get("accuracy"),
+            "delta_log_loss_vs_all": delta_log_loss,
+            "delta_brier_vs_all": delta_brier,
+        })
+
+    summary_rows.sort(key=lambda r: (r["walk_forward_log_loss"] or 999))
+
+    report = {
+        "created_at_utc": datetime.now(UTC).isoformat(),
+        "dataset": dataset.metadata,
+        "ablation_summary": summary_rows,
+        "ablation_details": results,
+        "feature_groups": {k: v for k, v in FEATURE_GROUPS.items()},
+    }
+
+    path = output_path or settings.data_dir / "models" / "ablation_report.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+
+    md_path = path.with_suffix(".md")
+    md_lines = [
+        "# Feature Ablation Report",
+        "",
+        f"Generated: {report['created_at_utc']}",
+        "",
+        "| Spec | Features | WF Log Loss | WF Brier | WF AUC | Δ Log Loss | Δ Brier |",
+        "|------|----------|-------------|-----------|--------|------------|---------|",
+    ]
+    for row in summary_rows:
+        ll = (
+            f"{row['walk_forward_log_loss']:.4f}"
+            if row["walk_forward_log_loss"] is not None
+            else "N/A"
+        )
+        brier = (
+            f"{row['walk_forward_brier_score']:.4f}"
+            if row["walk_forward_brier_score"] is not None
+            else "N/A"
+        )
+        auc = (
+            f"{row['walk_forward_auc']:.4f}"
+            if row["walk_forward_auc"] is not None
+            else "N/A"
+        )
+        dll = (
+            f"{row['delta_log_loss_vs_all']:+.4f}"
+            if row["delta_log_loss_vs_all"] is not None
+            else "N/A"
+        )
+        db = (
+            f"{row['delta_brier_vs_all']:+.4f}"
+            if row["delta_brier_vs_all"] is not None
+            else "N/A"
+        )
+        md_lines.append(
+            f"| {row['name']} | {row['feature_count']} | {ll} | {brier} | {auc} | {dll} | {db} |"
+        )
+    md_path.write_text("\n".join(md_lines) + "\n", encoding="utf-8")
+
+    return {"output_path": str(path), "markdown_path": str(md_path), **report}

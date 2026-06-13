@@ -15,7 +15,7 @@ from mma_eff_lab.download.sherdog import (
 )
 from mma_eff_lab.download.ufcstats import download_ufcstats
 from mma_eff_lab.features.pit import build_pit_features
-from mma_eff_lab.models.benchmark import benchmark_fight_models
+from mma_eff_lab.models.benchmark import benchmark_ablation, benchmark_fight_models
 from mma_eff_lab.models.calibrated import (
     CALIBRATED_CATBOOST_VERSION,
     train_calibrated_ufc_catboost,
@@ -69,6 +69,10 @@ def main() -> None:
     benchmark_models.add_argument("--output-path")
     benchmark_models.add_argument("--folds", type=int, default=8)
     benchmark_models.add_argument("--initial-train-fraction", type=float, default=0.5)
+    ablation = subparsers.add_parser("benchmark-ablation")
+    ablation.add_argument("--output-path")
+    ablation.add_argument("--folds", type=int, default=8)
+    ablation.add_argument("--initial-train-fraction", type=float, default=0.5)
     quality = subparsers.add_parser("validate-model-quality")
     quality.add_argument("--benchmark-path")
     quality.add_argument("--output-path")
@@ -152,6 +156,12 @@ def main() -> None:
         )
     elif args.command == "benchmark-fight-models":
         result = benchmark_fight_models(
+            output_path=Path(args.output_path) if args.output_path else None,
+            folds=args.folds,
+            initial_train_fraction=args.initial_train_fraction,
+        )
+    elif args.command == "benchmark-ablation":
+        result = benchmark_ablation(
             output_path=Path(args.output_path) if args.output_path else None,
             folds=args.folds,
             initial_train_fraction=args.initial_train_fraction,
