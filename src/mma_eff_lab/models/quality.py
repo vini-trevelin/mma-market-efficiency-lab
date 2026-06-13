@@ -253,8 +253,17 @@ def _missingness_check(metadata: dict[str, Any]) -> dict[str, Any]:
 
 def _serving_model_artifact_check(settings: Settings) -> dict[str, Any]:
     model_dir = settings.data_dir / "models" / CALIBRATED_CATBOOST_VERSION
-    required_files = ["model.cbm", "isotonic_calibrator.pkl", "metadata.json", "metrics.json"]
+    required_files = ["model.cbm", "metadata.json", "metrics.json"]
     missing = [f for f in required_files if not (model_dir / f).exists()]
+    has_json_calibrator = (model_dir / "isotonic_calibrator.json").exists()
+    has_pkl_calibrator = (model_dir / "isotonic_calibrator.pkl").exists()
+    if not has_json_calibrator and not has_pkl_calibrator:
+        missing.append("isotonic_calibrator.json")
+    calibrator_warnings: list[str] = []
+    if not has_json_calibrator and has_pkl_calibrator:
+        calibrator_warnings.append(
+            "Calibrator stored as pickle; retrain to generate JSON format"
+        )
     if missing:
         return {
             "name": "serving_model_artifact",
@@ -335,7 +344,7 @@ def _serving_model_artifact_check(settings: Settings) -> dict[str, Any]:
     else:
         metric_source = "single_split"
     status = "pass"
-    if degraded:
+    if degraded or calibrator_warnings:
         status = "warn"
     return {
         "name": "serving_model_artifact",
@@ -343,6 +352,7 @@ def _serving_model_artifact_check(settings: Settings) -> dict[str, Any]:
         "details": {
             "model_version": CALIBRATED_CATBOOST_VERSION,
             "files_checked": required_files,
+            "calibrator_format": "json" if has_json_calibrator else "pickle",
             "feature_column_count": len(stored_features),
             "metric_source": metric_source,
             "calibrated_walkforward_available": walkforward_path.exists(),
