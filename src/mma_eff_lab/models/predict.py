@@ -10,7 +10,11 @@ import duckdb
 import pandas as pd
 
 from mma_eff_lab.config import Settings, get_settings
-from mma_eff_lab.features.pit import build_future_matchup_features
+from mma_eff_lab.features.pit import (
+    FutureMatchup,
+    build_batch_future_matchup_features,
+    build_future_matchup_features,
+)
 from mma_eff_lab.models.calibrated import CALIBRATED_CATBOOST_VERSION, load_calibrated_catboost
 from mma_eff_lab.models.dataset import FEATURE_COLUMNS, feature_matrix
 from mma_eff_lab.models.train import MODEL_VERSION
@@ -119,23 +123,96 @@ def predict_card(
     missing = required - set(card.columns)
     if missing:
         raise ValueError(f"Card CSV missing required columns: {', '.join(sorted(missing))}")
-    predictions = [
-        predict_fight(
-            str(row["fighter_a"]),
-            str(row["fighter_b"]),
+
+    resolved_ids = [
+        (
+            row["fighter_a"],
+            row["fighter_b"],
+            resolve_fighter_id(str(row["fighter_a"]), settings),
+            resolve_fighter_id(str(row["fighter_b"]), settings),
             pd.to_datetime(row["event_date"]).date(),
-            model_version,
-            settings,
         )
         for row in card.to_dict("records")
     ]
+
+    matchups = [
+        FutureMatchup(
+            fighter_a_id=fighter_a_id,
+            fighter_b_id=fighter_b_id,
+            event_date=event_date,
+        )
+        for _, _, fighter_a_id, fighter_b_id, event_date in resolved_ids
+    ]
+
+    all_features = build_batch_future_matchup_features(matchups, settings)
+
+    if model_version == MODEL_VERSION:
+        model_dir = settings.data_dir / "models" / MODEL_VERSION
+        model = load_xgboost_model(model_dir / "model.json")
+        metadata = load_model_metadata(model_dir / "metadata.json")
+        predictions = [
+            predict_fight_probability(model, features, metadata["model_version"])
+            for features in all_features
+        ]
+    elif model_version == CALIBRATED_CATBOOST_VERSION:
+        bundle = load_calibrated_catboost(settings.data_dir / "models" / model_version)
+        predictions = []
+        for features in all_features:
+            row = {feature: features.get(feature) for feature in FEATURE_COLUMNS}
+            frame = pd.DataFrame([row], columns=FEATURE_COLUMNS)
+            raw_probability = float(
+                bundle.model.predict_proba(feature_matrix(frame))[:, 1][0]
+            )
+            probability = float(bundle.calibrator.predict([raw_probability])[0])
+            probability = min(max(probability, 0.0), 1.0)
+            predictions.append(
+                FightPrediction(
+                    fighter_a_win_probability=probability,
+                    fighter_b_win_probability=1.0 - probability,
+                    model_version=bundle.metadata["model_version"],
+                    feature_coverage={
+                        "feature_count": len(FEATURE_COLUMNS),
+                        "present_count": int(frame.notna().sum(axis=1).iloc[0]),
+                        "missing_features": [
+                            feature for feature in FEATURE_COLUMNS if pd.isna(row[feature])
+                        ],
+                        "raw_probability": raw_probability,
+                        "calibration": bundle.metadata.get("calibration"),
+                    },
+                )
+            )
+    else:
+        raise ValueError(
+            f"Unsupported model_version: {model_version}. "
+            f"Expected {MODEL_VERSION} or {CALIBRATED_CATBOOST_VERSION}."
+        )
+
+    results = [
+        {
+            "event_date": str(event_date),
+            "fighter_a": name_a,
+            "fighter_b": name_b,
+            "fighter_a_id": fighter_a_id,
+            "fighter_b_id": fighter_b_id,
+            "fighter_a_name": features["fighter_a_name"],
+            "fighter_b_name": features["fighter_b_name"],
+            "fighter_a_win_probability": prediction.fighter_a_win_probability,
+            "fighter_b_win_probability": prediction.fighter_b_win_probability,
+            "model_version": prediction.model_version,
+            "feature_coverage": prediction.feature_coverage,
+        }
+        for (name_a, name_b, fighter_a_id, fighter_b_id, event_date), features, prediction in zip(
+            resolved_ids, all_features, predictions, strict=True
+        )
+    ]
+
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        pd.DataFrame(predictions).to_csv(output_path, index=False)
+        pd.DataFrame(results).to_csv(output_path, index=False)
     return {
-        "rows": len(predictions),
+        "rows": len(results),
         "output_path": str(output_path) if output_path else None,
-        "predictions": predictions,
+        "predictions": results,
     }
 
 

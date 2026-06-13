@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from mma_eff_lab.config import get_settings
-from mma_eff_lab.features.pit import NUMERIC_FEATURES, build_pit_features
+from mma_eff_lab.features.pit import NUMERIC_FEATURES, FutureMatchup, build_pit_features
 from mma_eff_lab.models.dataset import (
     FEATURE_COLUMNS,
     TARGET_COLUMN,
@@ -210,3 +210,41 @@ def test_symmetric_model_has_small_gap() -> None:
     gap = compute_swapped_probability_gap(_SymmetricModel(), features, model_version="test")
 
     assert gap < 0.1
+
+
+def test_batch_future_matchup_features_matches_single_row(tmp_path) -> None:
+    from mma_eff_lab.features.pit import (
+        build_batch_future_matchup_features,
+        build_future_matchup_features,
+    )
+
+    _write_cached_fixture_tree(tmp_path)
+    _write_cached_sherdog_tree(tmp_path)
+    settings = replace(get_settings(tmp_path), repo_root=tmp_path)
+    build_warehouse(settings)
+    build_pit_features(settings)
+
+    dataset = build_model_dataset(settings)
+    latest_fight = dataset.frame.sort_values("event_date").iloc[-1]
+    fighter_a = str(latest_fight["fighter_a_id"])
+    fighter_b = str(latest_fight["fighter_b_id"])
+    event_date = latest_fight["event_date"]
+
+    single_result = build_future_matchup_features(
+        fighter_a, fighter_b, event_date, settings
+    )
+    batch_results = build_batch_future_matchup_features(
+        [FutureMatchup(fighter_a_id=fighter_a, fighter_b_id=fighter_b, event_date=event_date)],
+        settings,
+    )
+
+    assert len(batch_results) == 1
+    batch = batch_results[0]
+    for feature in NUMERIC_FEATURES:
+        key = f"delta_{feature}"
+        if single_result[key] is None and batch[key] is None:
+            continue
+        if single_result[key] is not None and batch[key] is not None:
+            assert abs(single_result[key] - batch[key]) < 1e-6, (
+                f"Mismatch at {key}: {single_result[key]} vs {batch[key]}"
+            )

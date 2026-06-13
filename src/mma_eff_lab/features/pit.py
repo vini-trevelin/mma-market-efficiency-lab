@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from math import sqrt
 from typing import Any
@@ -158,6 +159,76 @@ def build_future_matchup_features(
     for feature in NUMERIC_FEATURES:
         output[f"delta_{feature}"] = _delta(fighter_a.get(feature), fighter_b.get(feature))
     return output
+
+
+@dataclass
+class FutureMatchup:
+    fighter_a_id: str
+    fighter_b_id: str
+    event_date: date
+
+
+def build_batch_future_matchup_features(
+    matchups: list[FutureMatchup],
+    settings: Settings | None = None,
+) -> list[dict[str, Any]]:
+    settings = settings or get_settings()
+    all_fighter_ids = set()
+    for matchup in matchups:
+        all_fighter_ids.add(matchup.fighter_a_id)
+        all_fighter_ids.add(matchup.fighter_b_id)
+    unique_dates = sorted({matchup.event_date for matchup in matchups})
+    with duckdb.connect(str(settings.warehouse_path), read_only=True) as conn:
+        base = conn.execute(_base_query()).fetchdf()
+        fighters = conn.execute(
+            f"""
+            select fighter_id, full_name, dob, height_in, reach_in
+            from fighters
+            where fighter_id in ({','.join('?' for _ in all_fighter_ids)})
+            """,
+            list(all_fighter_ids),
+        ).fetchdf()
+    base = _add_pre_fight_ratings(base)
+    ratings_cache: dict[date, tuple[dict[str, float], dict[str, date]]] = {}
+    for event_date in unique_dates:
+        ratings, last_fight_dates = _rating_snapshot(base, event_date)
+        ratings_cache[event_date] = (ratings, last_fight_dates)
+    results: list[dict[str, Any]] = []
+    for matchup in matchups:
+        ratings, last_fight_dates = ratings_cache[matchup.event_date]
+        fighter_a = _future_fighter_features(
+            base,
+            fighters,
+            ratings,
+            last_fight_dates,
+            matchup.fighter_a_id,
+            matchup.fighter_b_id,
+            matchup.event_date,
+            "red",
+        )
+        fighter_b = _future_fighter_features(
+            base,
+            fighters,
+            ratings,
+            last_fight_dates,
+            matchup.fighter_b_id,
+            matchup.fighter_a_id,
+            matchup.event_date,
+            "blue",
+        )
+        output: dict[str, Any] = {
+            "fighter_a_id": matchup.fighter_a_id,
+            "fighter_b_id": matchup.fighter_b_id,
+            "fighter_a_name": fighter_a["full_name"],
+            "fighter_b_name": fighter_b["full_name"],
+            "event_date": matchup.event_date,
+        }
+        for feature in NUMERIC_FEATURES:
+            output[f"delta_{feature}"] = _delta(
+                fighter_a.get(feature), fighter_b.get(feature)
+            )
+        results.append(output)
+    return results
 
 
 def _future_fighter_features(
