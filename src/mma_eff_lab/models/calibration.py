@@ -135,6 +135,29 @@ def _probability_metrics(target: pd.Series, probabilities: pd.Series) -> dict[st
     }
 
 
+def expected_calibration_error(
+    target: pd.Series,
+    probabilities: pd.Series,
+    bins: int = 10,
+) -> float:
+    if len(target) == 0 or len(probabilities) == 0:
+        return 0.0
+    frame = pd.DataFrame({"target": target, "probability": probabilities}).reset_index(drop=True)
+    frame["bin"] = pd.cut(frame["probability"], bins=bins, labels=False, include_lowest=True)
+    total = len(frame)
+    if total == 0:
+        return 0.0
+    ece = 0.0
+    for _, group in frame.groupby("bin", dropna=True):
+        if group.empty:
+            continue
+        weight = len(group) / total
+        mean_predicted = group["probability"].mean()
+        observed_rate = group["target"].mean()
+        ece += weight * abs(mean_predicted - observed_rate)
+    return float(ece)
+
+
 def _calibration_curve(
     target: pd.Series,
     probabilities: pd.Series,

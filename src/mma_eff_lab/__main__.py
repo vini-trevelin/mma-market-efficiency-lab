@@ -20,6 +20,7 @@ from mma_eff_lab.models.calibrated import (
     CALIBRATED_CATBOOST_VERSION,
     train_calibrated_ufc_catboost,
 )
+from mma_eff_lab.models.calibrated_walkforward import evaluate_calibrated_walkforward
 from mma_eff_lab.models.calibration import evaluate_model_calibration
 from mma_eff_lab.models.dataset import write_model_dataset
 from mma_eff_lab.models.predict import predict_card, predict_fight
@@ -70,6 +71,11 @@ def main() -> None:
     quality = subparsers.add_parser("validate-model-quality")
     quality.add_argument("--benchmark-path")
     quality.add_argument("--output-path")
+    calibrated_wf = subparsers.add_parser("evaluate-calibrated-walkforward")
+    calibrated_wf.add_argument("--output-dir")
+    calibrated_wf.add_argument("--folds", type=int, default=8)
+    calibrated_wf.add_argument("--initial-train-fraction", type=float, default=0.5)
+    calibrated_wf.add_argument("--bins", type=int, default=10)
     calibration = subparsers.add_parser("evaluate-model-calibration")
     calibration.add_argument("--output-dir")
     calibration.add_argument("--source", default="ufcstats")
@@ -150,6 +156,13 @@ def main() -> None:
         result = validate_model_quality(
             benchmark_path=Path(args.benchmark_path) if args.benchmark_path else None,
             output_path=Path(args.output_path) if args.output_path else None,
+        )
+    elif args.command == "evaluate-calibrated-walkforward":
+        result = evaluate_calibrated_walkforward(
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+            folds=args.folds,
+            initial_train_fraction=args.initial_train_fraction,
+            bins=args.bins,
         )
     elif args.command == "evaluate-model-calibration":
         result = evaluate_model_calibration(
