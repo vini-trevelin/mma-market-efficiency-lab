@@ -1,7 +1,7 @@
 # Agent Operating Instructions
 
 This repository uses the detailed workflow in
-[`docs/repository-guide.md`](docs/repository-guide.md). Read that file before
+[`docs/repository-guide.md`](repository-guide.md). Read that file before
 planning or editing code.
 
 Minimum context to load before non-trivial work:
@@ -12,7 +12,7 @@ Minimum context to load before non-trivial work:
 4. `tasks/todo.md`
 5. Relevant config, source, and tests
 
-Use `tasks/todo.md` as the task log, and `plans/` directory to store long term implementation plans. 
+Use `tasks/todo.md` as the task log, and `plans/` directory to store long term implementation plans.
 Add a short plan before implementation, keep checkable items current, and add verification results when done.
 
 Core rules:

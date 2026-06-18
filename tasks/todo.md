@@ -1,5 +1,30 @@
 # Task Log
 
+# Implementation Plans 001–008
+
+## Plan
+
+- [x] Plan 001: Add calibrated walk-forward evaluation.
+- [x] Plan 002: Validate the serving model artifact.
+- [x] Plan 003: Enforce swapped-input probability invariance.
+- [x] Plan 004: Vectorize card prediction serving.
+- [x] Plan 005: Define generated artifact and data version policy.
+- [x] Plan 006: Add model cards and experiment registry.
+- [x] Plan 007: Add feature ablation and stability reports.
+- [x] Plan 008: Replace pickle calibrator serialization.
+
+## Review / Results
+
+- Plan 001: Added ECE helper, walk-forward calibrated fold evaluation with source-level metrics, CLI `evaluate-calibrated-walkforward`.
+- Plan 002: Added `serving_model_artifact` quality check verifying model files, feature schema, metric validity, calibrated degradation warning, and JSON calibrator format.
+- Plan 003: Added `compute_swapped_probability_gap` diagnostic helper and tests for asymmetric and symmetric models.
+- Plan 004: Added `build_batch_future_matchup_features` with `FutureMatchup` dataclass, refactored `predict_card` to resolve fighters once, build features in batch, load model once.
+- Plan 005: Added `data/models/`, `data/predictions/`, `data/upcoming/` to `.gitignore`; documented artifact policy in repository guide; reproduction instructions added.
+- Plan 006: Added `ModelCard` dataclass, `write_model_card` CLI command, git commit capture, `experiments.json` registry.
+- Plan 007: Added named feature groups (record, activity_bio, win_method, historical_averages, ufcstats_rates, rating), 5 ablation specs, `benchmark_ablation` CLI, JSON + Markdown ranked summary.
+- Plan 008: Replaced pickle with JSON isotonic calibrator (`IsotonicInterpolator` using `np.interp`), deprecated pickle fallback with warning, quality gate prefers JSON format.
+- All 84 tests pass. Fresh model artifacts generated with JSON calibrator.
+
 # UFC-Focused Probability Improvements
 
 ## Plan
